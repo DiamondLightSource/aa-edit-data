@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aa-remove-data
+  title: aa-remove-data
+  description: A tool to remove some data from the Epics Archiver Appliance
+spec:
+  type: service
+  lifecycle: experimental
+  owner: group:default/accelerator-controls
