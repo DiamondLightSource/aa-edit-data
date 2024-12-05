@@ -1,0 +1,18 @@
+# Changes here will be overwritten by Copier
+_commit: 2.5.0
+_src_path: gh:DiamondLightSource/python-copier-template
+author_email: jacob.williamson@diamond.ac.uk
+author_name: Jacob Williamson
+component_lifecycle: experimental
+component_owner: group:default/accelerator-controls
+component_type: service
+description: A tool to remove some data from the Epics Archiver Appliance
+distribution_name: aa-remove-data
+docker: true
+docs_type: README
+git_platform: github.com
+github_org: DiamondLightSource
+package_name: aa_remove_data
+pypi: false
+repo_name: aa-remove-data
+type_checker: pyright
