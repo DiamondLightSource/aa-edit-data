@@ -4,7 +4,7 @@ from aa_remove_data import EPICSEvent_pb2
 
 
 class PBUtils:
-    def __init__(self, filepath: PathLike | None = None) -> None:
+    def __init__(self, filepath: PathLike | None = None):
         """Initialise a PBUtils object. If filepath is set, read the protobuf
         file at this location to gether its header, samples and type.
 
@@ -89,7 +89,7 @@ class PBUtils:
         sample_class = getattr(EPICSEvent_pb2, sample_type_camel)
         return sample_class
 
-    def read_pb(self, filepath: PathLike) -> None:
+    def read_pb(self, filepath: PathLike):
         """Read a pb file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
