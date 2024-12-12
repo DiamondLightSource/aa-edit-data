@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from os import PathLike
 
 from aa_remove_data.generated import EPICSEvent_pb2
@@ -64,6 +65,31 @@ class PBUtils:
         parts = sample_type.split("_")
         return "".join(part.capitalize() for part in parts)
 
+    def convert_to_datetime(self, year: int, seconds: int) -> datetime:
+        """Get the date and time from a year and the number of seconds passed.
+        Args:
+            year (int): A year
+            seconds (int): The number of seconds into that year that have
+            passed.
+        Returns:
+            datetime: A datetime object of the correct date and time.
+        """
+        return datetime(year, 1, 1) + timedelta(seconds=seconds)
+
+    def get_datastr(self, sample: type, year: int) -> str:
+        """Get a string contaiing information about a sample.
+        Args:
+            sample (type): A sample from a pb file.
+            year (int): The year the sample was collected.
+        Returns:
+            str: A string containing the sample information.
+        """
+        date = self.convert_to_datetime(year, sample.secondsintoyear)
+        return (
+            f"{date}    {sample.secondsintoyear:8d}    {sample.nano:9d}"
+            f"    {sample.val}\n"
+        )
+
     def get_sample_type(self) -> str:
         """Get the name of a pb file's sample type using information in its
         header.
@@ -88,6 +114,21 @@ class PBUtils:
         sample_type_camel = self._convert_to_class_name(self.sample_type)
         sample_class = getattr(EPICSEvent_pb2, sample_type_camel)
         return sample_class
+
+    def write_to_txt(self, filepath: PathLike):
+        """Write a text file from a PBUtils object.
+
+        Args:
+            filepath (PathLike): Filepath for file to be written.
+        """
+        pvname = self.header.pvname
+        year = self.header.year
+        sample_type = self.get_sample_type()
+        data_strs = [self.get_datastr(sample, year) for sample in self.samples]
+        with open(filepath, "w") as f:
+            f.write(f"{pvname}, {sample_type}, {year}\n")
+            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            f.writelines(data_strs)
 
     def read_pb(self, filepath: PathLike):
         """Read a pb file that is structured in the Archiver Appliance format.
