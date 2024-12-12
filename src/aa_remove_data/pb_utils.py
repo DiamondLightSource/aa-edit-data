@@ -1,6 +1,6 @@
 from os import PathLike
 
-from aa_remove_data import EPICSEvent_pb2
+from aa_remove_data.generated import EPICSEvent_pb2
 
 
 class PBUtils:
