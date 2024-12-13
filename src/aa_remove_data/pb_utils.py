@@ -115,6 +115,21 @@ class PBUtils:
         sample_class = getattr(EPICSEvent_pb2, sample_type_camel)
         return sample_class
 
+    def generate_test_samples(self, sample_type=6, lines=100, year=2024,
+                              seconds_gap=1, nano_gap=0):
+        self.header.pvname = 'test'
+        self.header.year = year
+        self.header.type = sample_type
+        sample_class = self.get_sample_class()
+        self.samples = [sample_class() for n in range(lines)]
+        time_gap = seconds_gap * 10**9 + nano_gap
+        time = 0
+        for i, sample in enumerate(self.samples):
+            sample.secondsintoyear = time // 10**9
+            sample.nano = time % 10 ** 9
+            sample.val = i
+            time += time_gap
+
     def write_to_txt(self, filepath: PathLike):
         """Write a text file from a PBUtils object.
 
