@@ -19,7 +19,7 @@ class PBUtils:
         """
         self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
         self.samples = []
-        self.sample_type = ""
+        self.pv_type = ""
         self.chunked = False
         self.read_done = False
         self._chunk_size = chunk_size
@@ -28,9 +28,9 @@ class PBUtils:
         if filepath:
             self.read_pb(filepath)
 
-    def _escape_data(self, data: bytes) -> bytes:
-        """Replace escape characters with alternatives, to avoid conflitcs.
-        Should exactly mirror _unescape_data().
+    def _remove_aa_escape_chars(self, data: bytes) -> bytes:
+        """Replace Archiver Appliance escape characters with alternatives, to
+        avoid conflitcs when serialising.
 
         Args:
             data (bytes): A serialised protobuf sample.
@@ -43,9 +43,9 @@ class PBUtils:
         data = data.replace(b"\x0d", b"\x1b\x03")  # Escape carriage return
         return data
 
-    def _unescape_data(self, data: bytes) -> bytes:
-        """Replace escape character alternatives with the escape characters.
-        Should exactly mirror _escape_data().
+    def _add_aa_escape_chars(self, data: bytes) -> bytes:
+        """Add in Archiver Appliance escape characters which have previosuly
+        been removed. Should exactly mirror _remove_aa_escape_chars().
 
         Args:
             data (bytes): A serialised protobuf message with escape characters
@@ -60,18 +60,15 @@ class PBUtils:
         data = data.replace(b"\x1b\x01", b"\x1b")  # Unescape escape character
         return data
 
-    def _convert_to_class_name(self, sample_type: str) -> str:
-        """Convert the name of a sample type to CamelCase to correspond to
-        that sample type's class name.
-
-        Args:
-            sample_type (str): Name of sample type.
+    def _get_proto_class_name(self) -> str:
+        """Convert the name of a pv type to CamelCase to match the proto class
+        name.
 
         Returns:
-            str: Name of sample class, e.g VectorDouble.
+            str: Name of proto class, e.g VectorDouble.
         """
         # Split the enum name by underscores and capitalize each part
-        parts = sample_type.split("_")
+        parts = self.pv_type.split("_")
         return "".join(part.capitalize() for part in parts)
 
     def convert_to_datetime(self, year: int, seconds: int) -> datetime:
@@ -99,45 +96,30 @@ class PBUtils:
             f"    {sample.val}\n"
         )
 
-    def get_sample_type(self) -> str:
-        """Get the name of a pb file's sample type using information in its
+    def get_pv_type(self) -> str:
+        """Get the name of a pb file's pv type using information in its
         header.
 
         Returns:
-            str: Name of sample type, e.g VECTOR_DOUBLE.
+            str: Name of pv type, e.g VECTOR_DOUBLE.
         """
         type_descriptor = self.header.DESCRIPTOR.fields_by_name["type"]
         enum_descriptor = type_descriptor.enum_type
         return enum_descriptor.values_by_number[self.header.type].name
 
-    def get_sample_class(self) -> type:
-        """Get the EPICSEvent_pb2 class corresponding to samples in a pb file.
-        Instances of this class can interpret pb samples of a matching type.
+    def get_proto_class(self) -> type:
+        """Get the EPICSEvent_pb2 class corresponding to the pv in a pb file.
+        Instances of this class can interpret pb messages of a matching type.
 
         Returns:
-            type: pb sample class.
+            type: EPICSEvent_pb2 protocol buffer class.
         """
-        # Ensure self.sample_type is set first.
-        if not self.sample_type:
-            self.sample_type = self.get_sample_type()
-        sample_type_camel = self._convert_to_class_name(self.sample_type)
-        sample_class = getattr(EPICSEvent_pb2, sample_type_camel)
-        return sample_class
-
-    def generate_test_samples(self, sample_type=6, lines=100, year=2024, 
-                              start=0, seconds_gap=1, nano_gap=0):
-        self.header.pvname = 'test'
-        self.header.year = year
-        self.header.type = sample_type
-        sample_class = self.get_sample_class()
-        self.samples = [sample_class() for n in range(lines)]
-        time_gap = seconds_gap * 10**9 + nano_gap
-        time = start * 10**9
-        for i, sample in enumerate(self.samples):
-            sample.secondsintoyear = time // 10**9
-            sample.nano = time % 10 ** 9
-            sample.val = i
-            time += time_gap
+        # Ensure self.pv_type is set first.
+        if not self.pv_type:
+            self.pv_type = self.get_pv_type()
+        pv_type_camel = self._get_proto_class_name()
+        proto_class = getattr(EPICSEvent_pb2, pv_type_camel)
+        return proto_class
 
     def write_to_txt(self, filepath: PathLike):
         """Write a text file from a PBUtils object.
@@ -147,11 +129,14 @@ class PBUtils:
         """
         pvname = self.header.pvname
         year = self.header.year
-        sample_type = self.get_sample_type()
+        pv_type = self.get_pv_type()
         data_strs = [self.get_datastr(sample, year) for sample in self.samples]
         with open(filepath, "w") as f:
-            f.write(f"{pvname}, {sample_type}, {year}\n")
+            # Write header
+            f.write(f"{pvname}, {pv_type}, {year}\n")
+            # Write column titles
             f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            # Write body
             f.writelines(data_strs)
 
     def read_pb(self, filepath: PathLike):
@@ -168,23 +153,23 @@ class PBUtils:
                                         stdout=subprocess.PIPE, text=True)
                 self._total_lines = int(result.stdout.split()[0])
                 print(self._total_lines)
-                first_line = self._unescape_data(f.readline().strip())
+                first_line = self._add_aa_escape_chars(f.readline().strip())
                 self.header.ParseFromString(first_line)
                 f.seek(0)
                 self._start_line += 1
             end_line = min(self._start_line + self._chunk_size,
                            self._total_lines)
             lines = list(islice(f, self._start_line, end_line))
-            if self._total_lines == end_line:
-                self.read_done = True
-            else:
-                self.chunked = True
-            self._start_line = end_line
-            sample_class = self.get_sample_class()
-            self.samples = [sample_class() for n in range(len(lines))]
-            for i, sample in enumerate(self.samples):
-                line = self._unescape_data(lines[i].strip())
-                sample.ParseFromString(line)
+        if self._total_lines == end_line:
+            self.read_done = True
+        else:
+            self.chunked = True
+        self._start_line = end_line
+        proto_class = self.get_proto_class()
+        self.samples = [proto_class() for n in range(len(lines))]
+        for i, sample in enumerate(self.samples):
+            line = self._add_aa_escape_chars(lines[i].strip())
+            sample.ParseFromString(line)
 
     def write_pb(self, filepath: PathLike):
         """Write a pb file that is structured in the Archiver Appliance format.
@@ -194,12 +179,12 @@ class PBUtils:
             filepath (PathLike): Path to file to be written.
         """
         samples_b = [
-            self._escape_data(sample.SerializeToString()) + b"\n"
+            self._remove_aa_escape_chars(sample.SerializeToString()) + b"\n"
             for sample in self.samples
         ]
         if self._write_started is False:    # Write header, start new file
-            header_b = self._escape_data(self.header.SerializeToString()) \
-                + b"\n"
+            header_b = self._remove_aa_escape_chars(
+                self.header.SerializeToString()) + b"\n"
             with open(filepath, "wb") as f:
                 f.writelines([header_b] + samples_b)
             self._write_started = True
