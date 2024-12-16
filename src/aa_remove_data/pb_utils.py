@@ -121,6 +121,37 @@ class PBUtils:
         proto_class = getattr(EPICSEvent_pb2, pv_type_camel)
         return proto_class
 
+    def generate_test_samples(self, pv_type: int = 6,
+                              samples: int = 100,
+                              year: int = 2024,
+                              seconds_gap: int = 1,
+                              nano_gap: int = 0):
+        """Generate test Archiver Appliance samples.
+
+        Args:
+            pv_type (int, optional): PV type enum. Defaults to 6 (SCALAR_DOUBLE).
+            samples (int, optional): Number of samples to be generated.
+            Defaults to 100.
+            year (int, optional): Year associated with samples. Defaults to 2024.
+            seconds_gap (int, optional): Gap in seconds between samples.
+            Defaults to 1.
+            nano_gap (int, optional): Gap in nanoseconds between samples.
+            Defaults to 0.
+        """
+        self.header.pvname = 'test'
+        self.header.year = year
+        self.header.type = pv_type
+        
+        sample_class = self.get_proto_class()
+        self.samples = [sample_class() for n in range(samples)]
+        time_gap = seconds_gap * 10**9 + nano_gap
+        time = 0
+        for i, sample in enumerate(self.samples):
+            sample.secondsintoyear = time // 10**9
+            sample.nano = time % 10 ** 9
+            sample.val = i
+            time += time_gap
+
     def write_to_txt(self, filepath: PathLike):
         """Write a text file from a PBUtils object.
 
@@ -129,7 +160,7 @@ class PBUtils:
         """
         pvname = self.header.pvname
         year = self.header.year
-        pv_type = self.get_pv_type()
+        pv_type = self.pv_type
         data_strs = [self.get_datastr(sample, year) for sample in self.samples]
         with open(filepath, "w") as f:
             # Write header
