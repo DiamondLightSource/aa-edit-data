@@ -211,10 +211,8 @@ class PBUtils:
         else:
             self.data_chunked = True
         self._start_line = end_line
-        sample_class = self.get_proto_class()
-        self.samples = [sample_class() for _ in range(len(lines))]
-
-        # Read samples
+        proto_class = self.get_proto_class()
+        self.samples = [proto_class() for _ in range(len(lines))]
         for i, sample in enumerate(self.samples):
             line = self._restore_newline_chars(lines[i].strip())
             sample.ParseFromString(line)
