@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from os import PathLike
 
@@ -10,7 +11,7 @@ class PBUtils:
         file at this location to gether its header, samples and type.
 
         Args:
-            filepath (Optional[PathLike], optional): Path to pb file to be
+            filepath (Optional[PathLike], optional): Path to PB file to be
             read. Defaults to None.
         """
         self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
@@ -19,10 +20,9 @@ class PBUtils:
         if filepath:
             self.read_pb(filepath)
 
-    def _remove_aa_escape_chars(self, data: bytes) -> bytes:
-        """Replace Archiver Appliance escape characters with alternatives, to
-        avoid conflitcs when serialising.
-
+    def _replace_newline_chars(self, data: bytes) -> bytes:
+        """Replace newline characters with alternative to conform with the
+        archiver PB format. See https://epicsarchiver.readthedocs.io.
         Args:
             data (bytes): A serialised protobuf sample.
 
@@ -34,10 +34,9 @@ class PBUtils:
         data = data.replace(b"\x0d", b"\x1b\x03")  # Escape carriage return
         return data
 
-    def _add_aa_escape_chars(self, data: bytes) -> bytes:
-        """Add in Archiver Appliance escape characters which have previosuly
-        been removed. Should exactly mirror _remove_aa_escape_chars().
-
+    def _restore_newline_chars(self, data: bytes) -> bytes:
+        """Restore newline characters that have been replaced by the archiver
+        PB format. See https://epicsarchiver.readthedocs.io.
         Args:
             data (bytes): A serialised protobuf message with escape characters
             replaced.
@@ -73,10 +72,10 @@ class PBUtils:
         """
         return datetime(year, 1, 1) + timedelta(seconds=seconds)
 
-    def get_datastr(self, sample: type, year: int) -> str:
-        """Get a string contaiing information about a sample.
+    def format_datastr(self, sample: type, year: int) -> str:
+        """Get a string containing information about a sample.
         Args:
-            sample (type): A sample from a pb file.
+            sample (type): A sample from a PB file.
             year (int): The year the sample was collected.
         Returns:
             str: A string containing the sample information.
@@ -88,7 +87,7 @@ class PBUtils:
         )
 
     def get_pv_type(self) -> str:
-        """Get the name of a pb file's pv type using information in its
+        """Get the name of a PB file's pv type using information in its
         header.
 
         Returns:
@@ -98,12 +97,12 @@ class PBUtils:
         enum_descriptor = type_descriptor.enum_type
         return enum_descriptor.values_by_number[self.header.type].name
 
-    def get_proto_class(self) -> type:
-        """Get the EPICSEvent_pb2 class corresponding to the pv in a pb file.
-        Instances of this class can interpret pb messages of a matching type.
+    def get_proto_class(self) -> Callable:
+        """Get the EPICSEvent_pb2 class corresponding to the pv in a PB file.
+        Instances of this class can interpret PB messages of a matching type.
 
         Returns:
-            type: EPICSEvent_pb2 protocol buffer class.
+            Callable: EPICSEvent_pb2 protocol buffer class.
         """
         # Ensure self.pv_type is set first.
         if not self.pv_type:
@@ -120,45 +119,43 @@ class PBUtils:
         """
         pvname = self.header.pvname
         year = self.header.year
-        pv_type = self.get_pv_type()
-        data_strs = [self.get_datastr(sample, year) for sample in self.samples]
+        data_strs = [self.format_datastr(sample, year) for sample in self.samples]
         with open(filepath, "w") as f:
             # Write header
-            f.write(f"{pvname}, {pv_type}, {year}\n")
+            f.write(f"{pvname}, {self.pv_type}, {year}\n")
             # Write column titles
             f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
             # Write body
             f.writelines(data_strs)
 
     def read_pb(self, filepath: PathLike):
-        """Read a pb file that is structured in the Archiver Appliance format.
+        """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
 
         Args:
-            filepath (PathLike): Path to pb file.
+            filepath (PathLike): Path to PB file.
         """
         with open(filepath, "rb") as f:
-            first_line = self._add_aa_escape_chars(f.readline().strip())
+            first_line = self._restore_newline_chars(f.readline().strip())
             lines = f.readlines()
         self.header.ParseFromString(first_line)
         proto_class = self.get_proto_class()
         self.samples = [proto_class() for n in range(len(lines))]
         for i, sample in enumerate(self.samples):
-            line = self._add_aa_escape_chars(lines[i].strip())
+            line = self._restore_newline_chars(lines[i].strip())
             sample.ParseFromString(line)
 
     def write_pb(self, filepath: PathLike):
-        """Write a pb file that is structured in the Archiver Appliance format.
+        """Write a PB file that is structured in the Archiver Appliance format.
         Must have a valid header and list of samples to write.
 
         Args:
             filepath (PathLike): Path to file to be written.
         """
-        header_b = self._remove_aa_escape_chars(self.header.SerializeToString()
-                                                ) + b"\n"
+        header_b = self._replace_newline_chars(self.header.SerializeToString()) + b"\n"
         samples_b = [
-            self._remove_aa_escape_chars(sample.SerializeToString()) + b"\n"
+            self._replace_newline_chars(sample.SerializeToString()) + b"\n"
             for sample in self.samples
         ]
         with open(filepath, "wb") as f:
