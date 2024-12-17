@@ -1,8 +1,9 @@
-import subprocess
+import argparse
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from itertools import islice
 from os import PathLike
+from pathlib import Path
 
 from aa_remove_data.generated import EPICSEvent_pb2
 
@@ -198,7 +199,7 @@ class PBUtils:
             self.chunked = True
         self._start_line = end_line
         proto_class = self.get_proto_class()
-        self.samples = [proto_class() for n in range(len(lines))]
+        self.samples = [proto_class() for _ in range(len(lines))]
         for i, sample in enumerate(self.samples):
             line = self._restore_newline_chars(lines[i].strip())
             sample.ParseFromString(line)
@@ -217,3 +218,42 @@ class PBUtils:
         ]
         with open(filepath, "wb") as f:
             f.writelines([header_b] + samples_b)
+
+
+def pb_2_txt():
+    """Convert a .pb file to a human-readable .txt file"""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pb_filename", type=str)
+    parser.add_argument("txt_filename", type=str)
+    args = parser.parse_args()
+    pb_file = Path(args.pb_filename)
+    txt_file = Path(args.txt_filename)
+    if not pb_file.is_file():
+        raise FileNotFoundError(f"The file {pb_file} does not exist.")
+    if pb_file.suffix != ".pb":
+        raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
+    pb = PBUtils(pb_file)
+    pb.write_to_txt(txt_file)
+
+
+def print_header():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("pb_filename", type=str)
+    parser.add_argument("--lines", type=int, default=0)
+    args = parser.parse_args()
+    pb_file = Path(args.pb_filename)
+    lines = args.lines
+    if not pb_file.is_file():
+        raise FileNotFoundError(f"The file {pb_file} does not exist.")
+    if pb_file.suffix != ".pb":
+        raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
+    if lines < 0:
+        raise ValueError(f"Cannot have a negative number of lines ({lines}).")
+    pb = PBUtils(pb_file)
+    pvname = pb.header.pvname
+    year = pb.header.year
+    print(f"Name: {pvname}, Type: {pb.pv_type}, Year: {year}")
+    if lines > 0:
+        print(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL")
+        for i in range(lines):
+            print(pb.format_datastr(pb.samples[i], year).strip())
