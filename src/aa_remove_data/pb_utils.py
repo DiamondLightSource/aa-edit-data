@@ -3,7 +3,6 @@ import subprocess
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from itertools import islice
-from itertools import islice
 from os import PathLike
 from pathlib import Path
 
@@ -11,7 +10,6 @@ from aa_remove_data.generated import EPICSEvent_pb2
 
 
 class PBUtils:
-    def __init__(self, filepath: PathLike | None = None, chunk_size=10000000):
     def __init__(self, filepath: PathLike | None = None, chunk_size=10000000):
         """Initialise a PBUtils object. If filepath is set, read the protobuf
         file at this location to gether its header, samples and type.
