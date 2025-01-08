@@ -109,7 +109,7 @@ def get_index_at_timestamp(
         between the target timestamp and sample.
     """
     target = seconds * 10**9 + nano
-    last_diff = target - samples[0].secondsintoyear * 10**9 + samples[0].nano
+    last_diff = target - (samples[0].secondsintoyear * 10**9 + samples[0].nano)
     for i, sample in enumerate(samples):
         diff = target - (sample.secondsintoyear * 10**9 + sample.nano)
         if abs(last_diff) < abs(diff):
@@ -148,7 +148,7 @@ def remove_after_ts(samples: list, seconds: int, nano: int = 0) -> list:
         list: Reduced list of samples.
     """
     index, diff = get_index_at_timestamp(samples, seconds, nano)
-    if diff > 0:
+    if diff >= 0:
         return samples[: index + 1]
     else:
         return samples[:index]
