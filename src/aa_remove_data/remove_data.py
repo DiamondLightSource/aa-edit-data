@@ -3,7 +3,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from aa_remove_data.pb_utils import PBUtils
 
@@ -305,7 +305,6 @@ def aa_remove_data_before():
     parser.add_argument("--new_filename", type=str, default=None)
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
-    parser.add_argument("--block", type=int, default=1)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -354,7 +353,6 @@ def aa_remove_data_after():
     parser.add_argument("--new_filename", type=str, default=None)
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
-    parser.add_argument("--block", type=int, default=1)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -375,7 +373,7 @@ def aa_remove_data_after():
     year = pb_header.header.year
     timestamp = args.ts
     assert len(timestamp) <= 6, (
-        "Give timestamp in the form 'month.day.hour.minute.second.nanosecond'. "
+        "Give timestamp in the form 'month day hour minute second nanosecond'. "
         + "Month is required. All must be integers."
     )
     if len(timestamp) == 6:
