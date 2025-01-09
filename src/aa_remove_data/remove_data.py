@@ -207,6 +207,7 @@ def aa_reduce_freq():
     parser.add_argument("--new_filename", type=str, default=None)
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
+    parser.add_argument("--chunk", type=int, default=10000000)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -223,10 +224,12 @@ def aa_reduce_freq():
         assert args.backup_filename.endswith(".pb")
         backup_pb = Path(args.backup_filename)
 
-    pb = PBUtils(Path(args.filename))
-    pb.write_pb(backup_pb)
-    pb.samples = reduce_freq(pb.samples, period=args.period)
-    pb.write_pb(new_pb)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(Path(args.filename))
+        pb.write_pb(backup_pb)
+        pb.samples = reduce_freq(pb.samples, period=args.period)
+        pb.write_pb(new_pb)
     if args.write_txt:
         txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
         pb.write_to_txt(txt_filepath)
@@ -240,6 +243,7 @@ def aa_reduce_by_factor():
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
     parser.add_argument("--block", type=int, default=1)
+    parser.add_argument("--chunk", type=int, default=10000000)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -256,10 +260,12 @@ def aa_reduce_by_factor():
         assert args.backup_filename.endswith(".pb")
         backup_pb = Path(args.backup_filename)
 
-    pb = PBUtils(Path(args.filename))
-    pb.write_pb(backup_pb)
-    pb.samples = keep_every_nth(pb.samples, args.factor, block_size=args.block)
-    pb.write_pb(new_pb)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(Path(args.filename))
+        pb.write_pb(backup_pb)
+        pb.samples = keep_every_nth(pb.samples, args.factor, block_size=args.block)
+        pb.write_pb(new_pb)
     if args.write_txt:
         txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
         pb.write_to_txt(txt_filepath)
@@ -273,6 +279,7 @@ def aa_remove_every_nth():
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
     parser.add_argument("--block", type=int, default=1)
+    parser.add_argument("--chunk", type=int, default=10000000)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -289,10 +296,12 @@ def aa_remove_every_nth():
         assert args.backup_filename.endswith(".pb")
         backup_pb = Path(args.backup_filename)
 
-    pb = PBUtils(Path(args.filename))
-    pb.write_pb(backup_pb)
-    pb.samples = remove_every_nth(pb.samples, args.n, block_size=args.block)
-    pb.write_pb(new_pb)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(Path(args.filename))
+        pb.write_pb(backup_pb)
+        pb.samples = remove_every_nth(pb.samples, args.n, block_size=args.block)
+        pb.write_pb(new_pb)
     if args.write_txt:
         txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
         pb.write_to_txt(txt_filepath)
@@ -305,7 +314,7 @@ def aa_remove_data_before():
     parser.add_argument("--new_filename", type=str, default=None)
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
-    parser.add_argument("--block", type=int, default=1)
+    parser.add_argument("--chunk", type=int, default=10000000)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -338,10 +347,12 @@ def aa_remove_data_before():
 
     diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
     seconds = int(diff.total_seconds())
-    pb = PBUtils(Path(args.filename))
-    pb.write_pb(backup_pb)
-    pb.samples = remove_before_ts(pb.samples, seconds, nano=nano)
-    pb.write_pb(new_pb)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(Path(args.filename))
+        pb.write_pb(backup_pb)
+        pb.samples = remove_before_ts(pb.samples, seconds, nano=nano)
+        pb.write_pb(new_pb)
     if args.write_txt:
         txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
         pb.write_to_txt(txt_filepath)
@@ -354,7 +365,7 @@ def aa_remove_data_after():
     parser.add_argument("--new_filename", type=str, default=None)
     parser.add_argument("--backup_filename", type=str, default=None)
     parser.add_argument("--write_txt", action="store_true")
-    parser.add_argument("--block", type=int, default=1)
+    parser.add_argument("--chunk", type=int, default=10000000)
     args = parser.parse_args()
 
     assert args.filename.endswith(".pb")
@@ -375,7 +386,7 @@ def aa_remove_data_after():
     year = pb_header.header.year
     timestamp = args.ts
     assert len(timestamp) <= 6, (
-        "Give timestamp in the form 'month.day.hour.minute.second.nanosecond'. "
+        "Give timestamp in the form 'month day hour minute second nanosecond'. "
         + "Month is required. All must be integers."
     )
     if len(timestamp) == 6:
@@ -387,10 +398,12 @@ def aa_remove_data_after():
 
     diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
     seconds = int(diff.total_seconds())
-    pb = PBUtils(Path(args.filename))
-    pb.write_pb(backup_pb)
-    pb.samples = remove_after_ts(pb.samples, seconds, nano=nano)
-    pb.write_pb(new_pb)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(Path(args.filename))
+        pb.write_pb(backup_pb)
+        pb.samples = remove_after_ts(pb.samples, seconds, nano=nano)
+        pb.write_pb(new_pb)
     if args.write_txt:
         txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
         pb.write_to_txt(txt_filepath)
