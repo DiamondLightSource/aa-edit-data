@@ -148,7 +148,7 @@ def remove_after_ts(samples: list, seconds: int, nano: int = 0) -> list:
         list: Reduced list of samples.
     """
     index, diff = get_index_at_timestamp(samples, seconds, nano)
-    if diff > 0:
+    if diff >= 0:
         return samples[: index + 1]
     else:
         return samples[:index]
