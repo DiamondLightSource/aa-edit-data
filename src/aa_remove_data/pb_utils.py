@@ -1,24 +1,35 @@
 import argparse
+import subprocess
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from itertools import islice
 from os import PathLike
 from pathlib import Path
 
 from aa_remove_data.generated import EPICSEvent_pb2
 
+DEFAULT_CHUNK_SIZE = 10000000
+
 
 class PBUtils:
-    def __init__(self, filepath: PathLike | None = None):
+    def __init__(self, filepath: PathLike | None = None, chunk_size=DEFAULT_CHUNK_SIZE):
         """Initialise a PBUtils object. If filepath is set, read the protobuf
         file at this location to gether its header, samples and type.
 
         Args:
             filepath (Optional[PathLike], optional): Path to PB file to be
             read. Defaults to None.
+            chunk_size (Optional[int], optional): Number of lines to read/write
+            at one time.
         """
         self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
         self.samples = []
         self.pv_type = ""
+        self.data_chunked = False
+        self.read_done = False
+        self._chunk_size = chunk_size
+        self._start_line = 0
+        self._write_started = []
         if filepath:
             self.read_pb(filepath)
 
@@ -113,6 +124,41 @@ class PBUtils:
         proto_class = getattr(EPICSEvent_pb2, pv_type_camel)
         return proto_class
 
+    def generate_test_samples(
+        self,
+        pv_type: int = 6,
+        samples: int = 100,
+        year: int = 2024,
+        seconds_gap: int = 1,
+        nano_gap: int = 0,
+    ):
+        """Generate test Archiver Appliance samples.
+
+        Args:
+            pv_type (int, optional): PV type enum. Defaults to 6 (SCALAR_DOUBLE).
+            samples (int, optional): Number of samples to be generated.
+            Defaults to 100.
+            year (int, optional): Year associated with samples. Defaults to 2024.
+            seconds_gap (int, optional): Gap in seconds between samples.
+            Defaults to 1.
+            nano_gap (int, optional): Gap in nanoseconds between samples.
+            Defaults to 0.
+        """
+        self.header.pvname = "test"
+        self.header.year = year
+        self.header.type = pv_type
+
+        sample_class = self.get_proto_class()
+        self.samples = [sample_class() for _ in range(samples)]
+        time_gap = seconds_gap * 10**9 + nano_gap
+        time = 0
+
+        for i, sample in enumerate(self.samples):
+            sample.secondsintoyear = time // 10**9
+            sample.nano = time % 10**9
+            sample.val = i
+            time += time_gap
+
     def write_to_txt(self, filepath: PathLike):
         """Write a text file from a PBUtils object.
 
@@ -122,13 +168,19 @@ class PBUtils:
         pvname = self.header.pvname
         year = self.header.year
         data_strs = [self.format_datastr(sample, year) for sample in self.samples]
-        with open(filepath, "w") as f:
-            # Write header
-            f.write(f"{pvname}, {self.pv_type}, {year}\n")
-            # Write column titles
-            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
-            # Write body
-            f.writelines(data_strs)
+        if filepath not in self._write_started or self.data_chunked is False:
+            with open(filepath, "w") as f:
+                # Write header
+                f.write(f"{pvname}, {self.pv_type}, {year}\n")
+                # Write column titles
+                f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+                # Write body
+                f.writelines(data_strs)
+                self._write_started.append(filepath)
+        else:
+            with open(filepath, "a") as f:
+                # Write body
+                f.writelines(data_strs)
 
     def read_pb(self, filepath: PathLike):
         """Read a PB file that is structured in the Archiver Appliance format.
@@ -139,36 +191,65 @@ class PBUtils:
             filepath (PathLike): Path to PB file.
         """
         with open(filepath, "rb") as f:
-            first_line = self._restore_newline_chars(f.readline().strip())
-            lines = f.readlines()
-        self.header.ParseFromString(first_line)
-        proto_class = self.get_proto_class()
-        self.samples = [proto_class() for _ in range(len(lines))]
+            if self._start_line == 0:
+                # Read header
+                result = subprocess.run(
+                    ["wc", "-l", filepath], stdout=subprocess.PIPE, text=True
+                )
+                self._total_lines = int(result.stdout.split()[0])
+                first_line = self._restore_newline_chars(f.readline().strip())
+                self.header.ParseFromString(first_line)
+                f.seek(0)
+                self._start_line += 1
+
+            # Extract samples from file
+            end_line = min(self._start_line + self._chunk_size, self._total_lines)
+            lines = list(islice(f, self._start_line, end_line))
+
+        if self._total_lines == end_line:
+            self.read_done = True
+        else:
+            self.data_chunked = True
+        self._start_line = end_line
+        sample_class = self.get_proto_class()
+        self.samples = [sample_class() for _ in range(len(lines))]
+
+        # Read samples
         for i, sample in enumerate(self.samples):
             line = self._restore_newline_chars(lines[i].strip())
             sample.ParseFromString(line)
 
     def write_pb(self, filepath: PathLike):
-        """Write a PB file that is structured in the Archiver Appliance format.
+        """Write a pb file that is structured in the Archiver Appliance format.
         Must have a valid header and list of samples to write.
 
         Args:
             filepath (PathLike): Path to file to be written.
         """
-        header_b = self._replace_newline_chars(self.header.SerializeToString()) + b"\n"
-        samples_b = [
+        samples_bytes = [
             self._replace_newline_chars(sample.SerializeToString()) + b"\n"
             for sample in self.samples
         ]
-        with open(filepath, "wb") as f:
-            f.writelines([header_b] + samples_b)
+        if filepath not in self._write_started or self.data_chunked is False:
+            # Write header + samples, start new file
+            header_bytes = (
+                self._replace_newline_chars(self.header.SerializeToString()) + b"\n"
+            )
+            with open(filepath, "wb") as f:
+                f.writelines([header_bytes] + samples_bytes)
+            self._write_started.append(filepath)
+        else:
+            # Add samples to existing file
+            with open(filepath, "ab") as f:
+                f.writelines(samples_bytes)
 
 
 def pb_2_txt():
-    """Convert a .pb file to a human-readable .txt file"""
+    """Convert a .pb file to a human-readable .txt file."""
     parser = argparse.ArgumentParser()
     parser.add_argument("pb_filename", type=str)
     parser.add_argument("txt_filename", type=str)
+    parser.add_argument("--chunk", type=int, default=DEFAULT_CHUNK_SIZE)
     args = parser.parse_args()
     pb_file = Path(args.pb_filename)
     txt_file = Path(args.txt_filename)
@@ -176,12 +257,15 @@ def pb_2_txt():
         raise FileNotFoundError(f"The file {pb_file} does not exist.")
     if pb_file.suffix != ".pb":
         raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
-    pb = PBUtils(pb_file)
-    pb.write_to_txt(txt_file)
+    pb = PBUtils(chunk_size=args.chunk)
+    while pb.read_done is False:
+        pb.read_pb(pb_file)
+        pb.write_to_txt(txt_file)
     print("Write completed!")
 
 
 def print_header():
+    """Print the header and first few lines of a .pb file."""
     parser = argparse.ArgumentParser()
     parser.add_argument("pb_filename", type=str)
     parser.add_argument("--lines", type=int, default=0)
@@ -194,11 +278,11 @@ def print_header():
         raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
     if lines < 0:
         raise ValueError(f"Cannot have a negative number of lines ({lines}).")
-    pb = PBUtils(pb_file)
+    pb = PBUtils(pb_file, chunk_size=lines)
     pvname = pb.header.pvname
     year = pb.header.year
     print(f"Name: {pvname}, Type: {pb.pv_type}, Year: {year}")
-    if lines > 0:
+    if pb.samples:
         print(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL")
-        for i in range(lines):
-            print(pb.format_datastr(pb.samples[i], year).strip())
+        for sample in pb.samples:
+            print(pb.format_datastr(sample, year).strip())
