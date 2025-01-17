@@ -131,6 +131,7 @@ class PBUtils:
         pv_type: int = 6,
         samples: int = 100,
         year: int = 2024,
+        start: int = 0,
         seconds_gap: int = 1,
         nano_gap: int = 0,
     ):
@@ -142,6 +143,7 @@ class PBUtils:
             Defaults to 100.
             year (int, optional): Year associated with samples. Defaults to 2024.
             seconds_gap (int, optional): Gap in seconds between samples.
+            start (int, optional): Initial number of seconds for first sample.
             Defaults to 1.
             nano_gap (int, optional): Gap in nanoseconds between samples.
             Defaults to 0.
@@ -153,7 +155,7 @@ class PBUtils:
         sample_class = self.get_proto_class()
         self.samples = [sample_class() for _ in range(samples)]
         time_gap = seconds_gap * 10**9 + nano_gap
-        time = 0
+        time = start * 10**9
 
         for i, sample in enumerate(self.samples):
             sample.secondsintoyear = time // 10**9
