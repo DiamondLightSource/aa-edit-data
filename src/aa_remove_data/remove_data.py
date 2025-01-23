@@ -1,9 +1,6 @@
 import argparse
-import time
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from aa_remove_data.pb_utils import DEFAULT_CHUNK_SIZE, PBUtils
 
@@ -44,22 +41,6 @@ def get_seconds_diff(sample1: type, sample2: type) -> int:
             f"diff ({diff}) is negative - ensure sample2 comes after sample1."
         )
     return diff
-
-
-def benchmark(function: Callable, *args: Any, **kwargs: Any) -> Any:
-    """Print the time taken for a function to execute.
-
-    Args:
-        function (Callable): Function to execute.
-
-    Returns:
-        Any: Result of the function.
-    """
-    start_time = time.time()
-    result = function(*args, **kwargs)
-    end_time = time.time()
-    print(f"Time taken for {function.__name__}: {end_time - start_time:.2f}s.")
-    return result
 
 
 def reduce_freq(
