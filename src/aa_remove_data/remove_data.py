@@ -208,14 +208,11 @@ def remove_every_nth(
         raise ValueError(f"n = {n}, must be >= 1")
     elif block_size <= 0:
         raise ValueError(f"block_size = {block_size}, must be >= 1")
-    if block_size == 1:
-        return [item for i, item in enumerate(samples) if (i + 1 + initial) % n != 0]
-    else:
-        return [
-            item
-            for i, item in enumerate(samples)
-            if (i + block_size + initial) // block_size % n != 0
-        ]
+    return [
+        item
+        for i, item in enumerate(samples)
+        if (i + block_size + initial) // block_size % n != 0
+    ]
 
 
 def add_generic_args(parser):
