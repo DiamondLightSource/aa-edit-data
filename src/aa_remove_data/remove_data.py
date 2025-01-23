@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -259,6 +260,24 @@ def validate_pb_file(filepath):
         )
 
 
+def process_generic_args(args):
+    if args.backup_filename is None and (args.new_filename in (None, args.filename)):
+        args.backup_filename = args.filename.replace(".pb", "_backup.pb")
+        args.new_filename = args.filename
+    elif args.new_filename is None:
+        args.new_filename = args.filename
+    if args.backup_filename in (args.filename, args.new_filename):
+        raise ValueError(
+            f"Backup filename {args.backup_filename} cannot be the same as filename or"
+            + " new-filename"
+        )
+    validate_pb_file(args.filename)
+    validate_pb_file(args.new_filename)
+    if args.backup_filename is not None:
+        validate_pb_file(args.backup_filename)
+    return args
+
+
 def aa_reduce_freq():
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
@@ -266,33 +285,23 @@ def aa_reduce_freq():
         "period", type=float, help="(minimum) period between each data point"
     )
     args = parser.parse_args()
+    args = process_generic_args(args)
 
-    if args.new_filename is None:
-        new_pb = Path(args.filename)
-    else:
-        new_pb = Path(args.new_filename)
-
-    if args.backup_filename is None:
-        backup_pb = Path(args.filename.strip(".pb") + "_backup.pb")
-    else:
-        backup_pb = Path(args.backup_filename)
-
-    validate_pb_file(args.filename)
-    validate_pb_file(new_pb)
-    validate_pb_file(backup_pb)
+    filename = Path(args.filename)
+    new_pb = Path(args.new_filename)
+    if args.backup_filename is not None:
+        subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     txt_filepath = new_pb.with_suffix(".txt")
     pb = PBUtils(chunk_size=args.chunk)
     last_sample = None
     while pb.read_done is False:
-        pb.read_pb(Path(args.filename))
-        pb.write_pb(backup_pb)
+        pb.read_pb(filename)
         pb.samples = reduce_freq(
             pb.samples, period=args.period, initial_sample=last_sample
         )
         pb.write_pb(new_pb)
         if args.write_txt:
-            txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
             pb.write_to_txt(txt_filepath)
         if pb.samples:
             last_sample = pb.samples[-1]
@@ -304,33 +313,23 @@ def aa_reduce_by_factor():
     parser.add_argument("factor", type=int, help="factor to reduce the data by")
     parser.add_argument("--block", type=int, default=1)
     args = parser.parse_args()
+    args = process_generic_args(args)
 
-    if args.new_filename is None:
-        new_pb = Path(args.filename)
-    else:
-        new_pb = Path(args.new_filename)
-
-    if args.backup_filename is None:
-        backup_pb = Path(args.filename.strip(".pb") + "_backup.pb")
-    else:
-        backup_pb = Path(args.backup_filename)
-
-    validate_pb_file(args.filename)
-    validate_pb_file(new_pb)
-    validate_pb_file(backup_pb)
+    filename = Path(args.filename)
+    new_pb = Path(args.new_filename)
+    if args.backup_filename is not None:
+        subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     txt_filepath = new_pb.with_suffix(".txt")
     pb = PBUtils(chunk_size=args.chunk)
     initial = 0
     while pb.read_done is False:
-        pb.read_pb(Path(args.filename))
-        pb.write_pb(backup_pb)
+        pb.read_pb(filename)
         pb.samples = keep_every_nth(
             pb.samples, args.factor, block_size=args.block, initial=initial
         )
         pb.write_pb(new_pb)
         if args.write_txt:
-            txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
             pb.write_to_txt(txt_filepath)
         initial = (args.chunk + initial) % (args.factor * args.block)
 
@@ -341,33 +340,23 @@ def aa_remove_every_nth():
     parser.add_argument("n", type=int, help="remove every nth data point")
     parser.add_argument("--block", type=int, default=1)
     args = parser.parse_args()
+    args = process_generic_args(args)
 
-    if args.new_filename is None:
-        new_pb = Path(args.filename)
-    else:
-        new_pb = Path(args.new_filename)
-
-    if args.backup_filename is None:
-        backup_pb = Path(args.filename.strip(".pb") + "_backup.pb")
-    else:
-        backup_pb = Path(args.backup_filename)
-
-    validate_pb_file(args.filename)
-    validate_pb_file(new_pb)
-    validate_pb_file(backup_pb)
+    filename = Path(args.filename)
+    new_pb = Path(args.new_filename)
+    if args.backup_filename is not None:
+        subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     txt_filepath = new_pb.with_suffix(".txt")
     pb = PBUtils(chunk_size=args.chunk)
     initial = 0
     while pb.read_done is False:
-        pb.read_pb(Path(args.filename))
-        pb.write_pb(backup_pb)
+        pb.read_pb(filename)
         pb.samples = remove_every_nth(
             pb.samples, args.n, block_size=args.block, initial=initial
         )
         pb.write_pb(new_pb)
         if args.write_txt:
-            txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
             pb.write_to_txt(txt_filepath)
         initial = (args.chunk + initial) % (args.n * args.block)
 
@@ -385,21 +374,12 @@ def aa_remove_data_before():
         + "- month is required (default: {month} 1 0 0 0 0)",
     )
     args = parser.parse_args()
+    args = process_generic_args(args)
 
-    if args.new_filename is None:
-        new_pb = Path(args.filename)
-    else:
-        new_pb = Path(args.new_filename)
-
-    if args.backup_filename is None:
-        backup_pb = Path(args.filename.strip(".pb") + "_backup.pb")
-    else:
-        backup_pb = Path(args.backup_filename)
-
-    validate_pb_file(args.filename)
-    validate_pb_file(new_pb)
-    validate_pb_file(backup_pb)
-
+    filename = Path(args.filename)
+    new_pb = Path(args.new_filename)
+    if args.backup_filename is not None:
+        subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
     timestamp = args.ts
     if not len(timestamp) <= 6:
         raise ValueError(
@@ -419,14 +399,13 @@ def aa_remove_data_before():
 
     diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
     seconds = int(diff.total_seconds())
+    txt_filepath = new_pb.with_suffix(".txt")
     pb = PBUtils(chunk_size=args.chunk)
     while pb.read_done is False:
-        pb.read_pb(Path(args.filename))
-        pb.write_pb(backup_pb)
+        pb.read_pb(filename)
         pb.samples = remove_before_ts(pb.samples, seconds, nano=nano)
         pb.write_pb(new_pb)
         if args.write_txt:
-            txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
             pb.write_to_txt(txt_filepath)
 
 
@@ -443,20 +422,12 @@ def aa_remove_data_after():
         + "- month is required (default: {month} 1 0 0 0 0)",
     )
     args = parser.parse_args()
+    args = process_generic_args(args)
 
-    if args.new_filename is None:
-        new_pb = Path(args.filename)
-    else:
-        new_pb = Path(args.new_filename)
-
-    if args.backup_filename is None:
-        backup_pb = Path(args.filename.strip(".pb") + "_backup.pb")
-    else:
-        backup_pb = Path(args.backup_filename)
-
-    validate_pb_file(args.filename)
-    validate_pb_file(new_pb)
-    validate_pb_file(backup_pb)
+    filename = Path(args.filename)
+    new_pb = Path(args.new_filename)
+    if args.backup_filename is not None:
+        subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     timestamp = args.ts
     if not len(timestamp) <= 6:
@@ -477,12 +448,11 @@ def aa_remove_data_after():
 
     diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
     seconds = int(diff.total_seconds())
+    txt_filepath = new_pb.with_suffix(".txt")
     pb = PBUtils(chunk_size=args.chunk)
     while pb.read_done is False:
-        pb.read_pb(Path(args.filename))
-        pb.write_pb(backup_pb)
+        pb.read_pb(filename)
         pb.samples = remove_after_ts(pb.samples, seconds, nano=nano)
         pb.write_pb(new_pb)
         if args.write_txt:
-            txt_filepath = Path(str(new_pb).strip(".pb") + ".txt")
             pb.write_to_txt(txt_filepath)
