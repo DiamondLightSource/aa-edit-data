@@ -251,16 +251,21 @@ def add_generic_args(parser):
     return parser
 
 
-def validate_pb_file(filepath):
+def validate_pb_file(filepath, should_exist=False):
     filepath = Path(filepath)
     if filepath.suffix != ".pb":
         raise ValueError(
             f"Invalid file extension for {filepath}: '{filepath.suffix}'. "
             + "Expected '.pb'."
         )
+    if should_exist:
+        if not filepath.is_file():
+            raise FileNotFoundError(f"{filepath} is not a filepath.")
 
 
 def process_generic_args(args):
+    validate_pb_file(args.filename, should_exist=True)
+
     if args.backup_filename is None and (args.new_filename in (None, args.filename)):
         args.backup_filename = args.filename.replace(".pb", "_backup.pb")
         args.new_filename = args.filename
@@ -271,7 +276,7 @@ def process_generic_args(args):
             f"Backup filename {args.backup_filename} cannot be the same as filename or"
             + " new-filename"
         )
-    validate_pb_file(args.filename)
+
     validate_pb_file(args.new_filename)
     if args.backup_filename is not None:
         validate_pb_file(args.backup_filename)
