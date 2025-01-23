@@ -44,30 +44,22 @@ def get_seconds_diff(sample1: type, sample2: type) -> int:
     return diff
 
 
-def reduce_freq(
+def apply_min_period(
     samples: list,
-    freq: float = 0,
-    period: float = 0,
+    period: float,
     initial_sample: type | None = None,
 ) -> list:
-    """Reduce the frequency of a list of samples. Specify the desired frequency
-    or period (not both).
+    """Reduce the frequency of a list of samples. Specify the desired minimum period.
 
     Args:
-        samples (list): List of samples
-        freq (float, optional): Desired frequency. Defaults to 0.
-        period (float, optional): Desired period. Defaults to 0.
+        samples (list): List of samples.
+        period (float): Desired minimum period between adjacent samples.
         initial_sample (type, optional): An initial sample to find an initial diff.
 
     Returns:
         list: Reduced list of samples
     """
-    if not (freq * period == 0 and (freq + period) > 0):
-        raise ValueError("Must set either frequency or period, not both or none.")
-    if freq:
-        seconds_delta = 1 / freq
-    else:
-        seconds_delta = period
+    seconds_delta = period
     nano_delta = (seconds_delta * 10**9) // 1
     diff = 0
     if not nano_delta >= 1:
@@ -284,7 +276,7 @@ def aa_reduce_freq():
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument(
-        "period", type=float, help="(minimum) period between each data point"
+        "period", type=float, help="Minimum period between each data point"
     )
     args = parser.parse_args()
     args = process_generic_args(args)
@@ -299,7 +291,7 @@ def aa_reduce_freq():
     last_sample = None
     while pb.read_done is False:
         pb.read_pb(filename)
-        pb.samples = reduce_freq(
+        pb.samples = apply_min_period(
             pb.samples, period=args.period, initial_sample=last_sample
         )
         pb.write_pb(new_pb)
