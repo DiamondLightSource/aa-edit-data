@@ -21,7 +21,10 @@ def get_nano_diff(sample1: type, sample2: type) -> int:
     diff = (sample2.secondsintoyear - sample1.secondsintoyear) * 10**9 + (
         sample2.nano - sample1.nano
     )
-    assert diff > 0
+    if not diff > 0:
+        raise ValueError(
+            f"diff ({diff}) is non-positive - ensure sample2 comes after sample1."
+        )
     return diff
 
 
@@ -33,10 +36,13 @@ def get_seconds_diff(sample1: type, sample2: type) -> int:
         sample2 (type): Another Archiver Appliance sample.
 
     Returns:
-        _type_: Difference in seconds
+        int: Difference in seconds
     """
     diff = sample2.secondsintoyear - sample1.secondsintoyear
-    assert diff >= 0
+    if not diff >= 0:
+        raise ValueError(
+            f"diff ({diff}) is negative - ensure sample2 comes after sample1."
+        )
     return diff
 
 
@@ -74,16 +80,16 @@ def reduce_freq(
     Returns:
         list: Reduced list of samples
     """
-    assert freq * period == 0 and (freq + period) > 0, (
-        "Must set either frequency or period, not both or none."
-    )
+    if not (freq * period == 0 and (freq + period) > 0):
+        raise ValueError("Must set either frequency or period, not both or none.")
     if freq:
         seconds_delta = 1 / freq
     else:
         seconds_delta = period
     nano_delta = (seconds_delta * 10**9) // 1
     diff = 0
-    assert nano_delta >= 1, "Must have a period of more than 1 nanosecond."
+    if not nano_delta >= 1:
+        raise ValueError(f"Period ({period}) must be at least 1 nanosecond.")
 
     if seconds_delta >= 5:  # Save time for long periods by ignoring nano
         delta = seconds_delta
@@ -413,13 +419,16 @@ def aa_remove_data_before():
     validate_pb_file(new_pb)
     validate_pb_file(backup_pb)
 
+    timestamp = args.ts
+    if not len(timestamp) <= 6:
+        raise ValueError(
+            "Give timestamp in the form 'month day hour minute second nanosecond'. "
+            + "Month is required. All must be integers."
+        )
+
     pb_header = PBUtils(Path(args.filename), chunk_size=0)
     year = pb_header.header.year
-    timestamp = args.ts
-    assert len(timestamp) <= 6, (
-        "Give timestamp in the form 'month.day.hour.minute.second.nanosecond'. "
-        + "Month is required. All must be integers."
-    )
+
     if len(timestamp) == 6:
         nano = timestamp.pop(5)
     else:
@@ -443,7 +452,15 @@ def aa_remove_data_before():
 def aa_remove_data_after():
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
-    parser.add_argument("--ts", nargs="+", type=int, required=True)
+    parser.add_argument(
+        "--ts",
+        nargs="+",
+        type=int,
+        required=True,
+        metavar="timestamp",
+        help="timestamp in the form 'month day hour minute second nanosecond' "
+        + "- month is required (default: {month} 1 0 0 0 0)",
+    )
     args = parser.parse_args()
 
     if args.new_filename is None:
@@ -460,14 +477,16 @@ def aa_remove_data_after():
     validate_pb_file(new_pb)
     validate_pb_file(backup_pb)
 
-    pb_header = PBUtils(Path(args.filename), chunk_size=0)
-    year = pb_header.header.year
     timestamp = args.ts
     if not len(timestamp) <= 6:
         raise ValueError(
             "Give timestamp in the form 'month day hour minute second nanosecond'. "
             + "Month is required. All must be integers."
         )
+
+    pb_header = PBUtils(Path(args.filename), chunk_size=0)
+    year = pb_header.header.year
+
     if len(timestamp) == 6:
         nano = timestamp.pop(5)
     else:
