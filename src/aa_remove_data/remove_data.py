@@ -273,6 +273,8 @@ def process_generic_args(args):
 
 
 def aa_reduce_freq():
+    """Reduce the frequency of data in a PB file by setting a minimum period between
+    data points."""
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument(
@@ -302,6 +304,8 @@ def aa_reduce_freq():
 
 
 def aa_reduce_by_factor():
+    """Reduce the number of data points in a PB file by a certain factor by removing all
+    but every nth."""
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument("factor", type=int, help="factor to reduce the data by")
@@ -329,6 +333,7 @@ def aa_reduce_by_factor():
 
 
 def aa_remove_every_nth():
+    """Remove every nth data point in a PB file."""
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument("n", type=int, help="remove every nth data point")
@@ -356,6 +361,7 @@ def aa_remove_every_nth():
 
 
 def aa_remove_data_before():
+    """Remove all data points before a certain timestamp in a PB file."""
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument(
@@ -404,6 +410,7 @@ def aa_remove_data_before():
 
 
 def aa_remove_data_after():
+    """Remove all data points after a certain timestamp in a PB file."""
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument(
