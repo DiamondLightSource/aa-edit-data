@@ -2,11 +2,12 @@ import argparse
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from aa_remove_data.pb_utils import DEFAULT_CHUNK_SIZE, PBUtils
 
 
-def get_nano_diff(sample1: type, sample2: type) -> int:
+def get_nano_diff(sample1: Any, sample2: Any) -> int:
     """Get the difference in nano seconds between two samples.
 
     Args:
