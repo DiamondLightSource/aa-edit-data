@@ -273,7 +273,7 @@ def process_generic_args(args):
     return args
 
 
-def aa_reduce_freq():
+def aa_reduce_to_period():
     """Reduce the frequency of data in a PB file by setting a minimum period between
     data points."""
     parser = argparse.ArgumentParser()
