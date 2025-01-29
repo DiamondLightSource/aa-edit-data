@@ -11,8 +11,8 @@ def get_nano_diff(sample1: Any, sample2: Any) -> int:
     """Get the difference in nano seconds between two samples.
 
     Args:
-        sample1 (type): An Archiver Appliance sample.
-        sample2 (type): Another Archiver Appliance sample.
+        sample1 (Any): An Archiver Appliance sample.
+        sample2 (Any): Another Archiver Appliance sample.
 
     Returns:
         int: Difference in nanoseconds.
@@ -27,12 +27,12 @@ def get_nano_diff(sample1: Any, sample2: Any) -> int:
     return diff
 
 
-def get_seconds_diff(sample1: type, sample2: type) -> int:
+def get_seconds_diff(sample1: Any, sample2: Any) -> int:
     """Get the difference in whole seconds between two samples.
 
     Args:
-        sample1 (type): An Archiver Appliance sample.
-        sample2 (type): Another Archiver Appliance sample.
+        sample1 (Any): An Archiver Appliance sample.
+        sample2 (Any): Another Archiver Appliance sample.
 
     Returns:
         int: Difference in seconds
@@ -48,14 +48,14 @@ def get_seconds_diff(sample1: type, sample2: type) -> int:
 def apply_min_period(
     samples: list,
     period: float,
-    initial_sample: type | None = None,
+    initial_sample: Any | None = None,
 ) -> list:
     """Reduce the frequency of a list of samples. Specify the desired minimum period.
 
     Args:
         samples (list): List of samples.
         period (float): Desired minimum period between adjacent samples.
-        initial_sample (type, optional): An initial sample to find an initial diff.
+        initial_sample (Any, optional): An initial sample to find an initial diff.
 
     Returns:
         list: Reduced list of samples
