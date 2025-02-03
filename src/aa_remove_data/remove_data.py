@@ -172,12 +172,13 @@ def keep_every_nth(
     elif block_size <= 0:
         raise ValueError(f"block_size = {block_size}, must be >= 1")
     if block_size == 1:
-        return samples[n - 1 - initial :: n]
+        first = 0 if initial == 0 else n - initial
+        return samples[first::n]
     else:
         return [
             item
             for i, item in enumerate(samples)
-            if (i + block_size + initial) // block_size % n == 0
+            if (i + initial) // block_size % n == 0
         ]
 
 
