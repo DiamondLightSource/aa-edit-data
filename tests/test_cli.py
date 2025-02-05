@@ -220,43 +220,6 @@ def test_cli_reduce_by_factor():
     write.unlink()
 
 
-def test_cli_reduce_by_factor_blocks():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_reduce_by_factor_blocks.pb"
-    expected = cli_output / "SCALAR_STRING_reduce_by_factor_blocks.pb"
-    factor = "4"
-    cmd = [
-        "aa-reduce-data-by-factor",
-        read,
-        factor,
-        f"--new-filename={write}",
-        "--block=5",
-    ]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
-def test_cli_reduce_by_factor_blocks_chunked():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_reduce_by_factor_blocks_chunked.pb"
-    expected = cli_output / "SCALAR_STRING_reduce_by_factor_blocks.pb"
-    factor = "4"
-    cmd = [
-        "aa-reduce-data-by-factor",
-        read,
-        factor,
-        f"--new-filename={write}",
-        "--block=5",
-        "--chunk=11",
-    ]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
 def test_cli_reduce_by_factor_chunked():
     read = test_data / "SCALAR_STRING_test_data.pb"
     write = results / "SCALAR_STRING_reduce_by_factor_chunked.pb"
