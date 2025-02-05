@@ -151,17 +151,13 @@ def remove_after_ts(samples: list, seconds: int, nano: int = 0) -> list:
         return samples[:index]
 
 
-def keep_every_nth(
-    samples: list, n: int, block_size: int = 1, initial: int = 0
-) -> list:
+def keep_every_nth(samples: list, n: int, initial: int = 0) -> list:
     """Reduce the size of a list of samples, keeping every nth sample and
-    removing the rest. The samples can be grouped together into blocks, so
-    that every nth block is kept.
+    removing the rest.
 
     Args:
         samples (list): List of samples
-        n (int): Every nth sample (or block of samples) will be kept.
-        block_size (int, optional): Number of samples per block. Defaults to 1.
+        n (int): Every nth sample will be kept.
         initial (int, optional): End point of processing from a previous chunk.
 
     Returns:
@@ -169,17 +165,8 @@ def keep_every_nth(
     """
     if n <= 0:
         raise ValueError(f"n = {n}, must be >= 1")
-    elif block_size <= 0:
-        raise ValueError(f"block_size = {block_size}, must be >= 1")
-    if block_size == 1:
-        first = 0 if initial == 0 else n - initial
-        return samples[first::n]
-    else:
-        return [
-            item
-            for i, item in enumerate(samples)
-            if (i + initial) // block_size % n == 0
-        ]
+    first = 0 if initial == 0 else n - initial
+    return samples[first::n]
 
 
 def add_generic_args(parser):
@@ -284,7 +271,6 @@ def aa_reduce_by_factor():
     parser = argparse.ArgumentParser()
     parser = add_generic_args(parser)
     parser.add_argument("factor", type=int, help="factor to reduce the data by")
-    parser.add_argument("--block", type=int, default=1)
     args = parser.parse_args()
     args = process_generic_args(args)
 
@@ -298,13 +284,11 @@ def aa_reduce_by_factor():
     initial = 0
     while pb.read_done is False:
         pb.read_pb(filename)
-        pb.samples = keep_every_nth(
-            pb.samples, args.factor, block_size=args.block, initial=initial
-        )
+        pb.samples = keep_every_nth(pb.samples, args.factor, initial=initial)
         pb.write_pb(new_pb)
         if args.write_txt:
             pb.write_to_txt(txt_filepath)
-        initial = (args.chunk + initial) % (args.factor * args.block)
+        initial = (args.chunk + initial) % args.factor
 
 
 def aa_remove_data_before():
