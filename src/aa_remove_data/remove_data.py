@@ -1,10 +1,12 @@
 import argparse
 import subprocess
+from collections.abc import Iterator
 from datetime import datetime
+from itertools import islice
 from pathlib import Path
 from typing import Any
 
-from aa_remove_data.pb_utils import DEFAULT_CHUNK_SIZE, PBUtils
+from aa_remove_data.pb_utils import PBUtils
 
 
 def get_nano_diff(sample1: Any, sample2: Any) -> int:
@@ -45,11 +47,7 @@ def get_seconds_diff(sample1: Any, sample2: Any) -> int:
     return diff
 
 
-def apply_min_period(
-    samples: list,
-    period: float,
-    initial_sample: Any | None = None,
-) -> list:
+def filter_samples_to_period(pb: Any, period: float) -> Iterator:
     """Reduce the frequency of a list of samples. Specify the desired minimum period.
 
     Args:
@@ -62,7 +60,6 @@ def apply_min_period(
     """
     seconds_delta = period
     nano_delta = (seconds_delta * 10**9) // 1
-    diff = 0
     if not nano_delta >= 1:
         raise ValueError(f"Period ({period}) must be at least 1 nanosecond.")
 
@@ -73,49 +70,38 @@ def apply_min_period(
         delta = nano_delta  # For short periods still count nano
         get_diff = get_nano_diff
 
-    if initial_sample is not None:
-        diff = get_diff(initial_sample, samples[0])
-        if diff >= delta:
-            reduced_samples = [samples[0]]
-            diff = 0
-        else:
-            reduced_samples = []
+    first_sample = next(pb.get_samples())
+    yield first_sample
+    last_yielded_sample = first_sample
+    for sample in islice(pb.get_samples(), 1, None):
+        if get_diff(last_yielded_sample, sample) >= delta:
+            last_yielded_sample = sample
+            yield sample
+
+
+def apply_min_period(pb, period):
+    return (sample for sample in filter_samples_to_period(pb, period))
+
+
+def is_before(sample, seconds, nano):
+    if sample.secondsintoyear < seconds or (
+        sample.secondsintoyear == seconds and sample.nano < nano
+    ):
+        return True
     else:
-        diff = 0
-        reduced_samples = [samples[0]]
-    for i in range(len(samples) - 1):
-        diff += get_diff(samples[i], samples[i + 1])
-        if diff >= delta:
-            reduced_samples.append(samples[i + 1])
-            diff = 0
-    return reduced_samples
+        return False
 
 
-def get_index_at_timestamp(
-    samples: list, seconds: int, nano: int = 0
-) -> tuple[int, float]:
-    """Get index of the sample closest to a timestamp.
-
-    Args:
-        samples (list): List of samples.
-        seconds (int): Seconds portion of timestamp (into the year).
-        nano (int, optional): Nanoseconds portion of timestamp. Defaults to 0.
-
-    Returns:
-        tuple[int, float]: Index of closest sample, difference in nanoseconds
-        between the target timestamp and sample.
-    """
-    target = seconds * 10**9 + nano
-    last_diff = target - (samples[0].secondsintoyear * 10**9 + samples[0].nano)
-    for i, sample in enumerate(samples):
-        diff = target - (sample.secondsintoyear * 10**9 + sample.nano)
-        if abs(last_diff) < abs(diff):
-            return i - 1, last_diff
-        last_diff = diff
-    return len(samples) - 1, last_diff
+def is_after(sample, seconds, nano):
+    if sample.secondsintoyear > seconds or (
+        sample.secondsintoyear == seconds and sample.nano > nano
+    ):
+        return True
+    else:
+        return False
 
 
-def remove_before_ts(samples: list, seconds: int, nano: int = 0) -> list:
+def remove_before_ts(pb: Any, seconds: int, nano: int = 0) -> Iterator:
     """Remove all samples before a certain timestamp.
 
     Args:
@@ -126,14 +112,12 @@ def remove_before_ts(samples: list, seconds: int, nano: int = 0) -> list:
     Returns:
         list: Reduced list of samples.
     """
-    index, diff = get_index_at_timestamp(samples, seconds, nano)
-    if diff > 0:
-        return samples[index + 1 :]
-    else:
-        return samples[index:]
+    return (
+        sample for sample in pb.get_samples() if not is_before(sample, seconds, nano)
+    )
 
 
-def remove_after_ts(samples: list, seconds: int, nano: int = 0) -> list:
+def remove_after_ts(pb: Any, seconds: int, nano: int = 0) -> Iterator:
     """Remove all samples after a certain timestamp.
 
     Args:
@@ -144,14 +128,12 @@ def remove_after_ts(samples: list, seconds: int, nano: int = 0) -> list:
     Returns:
         list: Reduced list of samples.
     """
-    index, diff = get_index_at_timestamp(samples, seconds, nano)
-    if diff >= 0:
-        return samples[: index + 1]
-    else:
-        return samples[:index]
+    return (
+        sample for sample in pb.get_samples() if not is_after(sample, seconds, nano)
+    )
 
 
-def keep_every_nth(samples: list, n: int, initial: int = 0) -> list:
+def reduce_by_factor(pb, n) -> Iterator:
     """Reduce the size of a list of samples, keeping every nth sample and
     removing the rest.
 
@@ -163,10 +145,7 @@ def keep_every_nth(samples: list, n: int, initial: int = 0) -> list:
     Returns:
         list: Reduced list of samples.
     """
-    if n <= 0:
-        raise ValueError(f"n = {n}, must be >= 1")
-    first = 0 if initial == 0 else n - initial
-    return samples[first::n]
+    return (sample for i, sample in enumerate(pb.get_samples()) if i % n == 0)
 
 
 def add_generic_args(parser):
@@ -192,12 +171,6 @@ def add_generic_args(parser):
         "--write-txt",
         action="store_true",
         help="write result to a .txt file (default: False)",
-    )
-    parser.add_argument(
-        "--chunk",
-        type=int,
-        default=DEFAULT_CHUNK_SIZE,
-        help=f"chunk size in lines (default: {DEFAULT_CHUNK_SIZE})",
     )
     return parser
 
@@ -231,9 +204,21 @@ def process_generic_args(args):
     validate_pb_file(args.new_filename)
     if args.backup_filename is not None:
         validate_pb_file(args.backup_filename)
-    if args.chunk <= 0:
-        raise ValueError(f"Chunk size ({args.chunk}) must be > 0")
     return args
+
+
+def process_timestamp(pb, timestamp):
+    timestamp = [int(value) for value in timestamp.split(",")]
+    if not len(timestamp) <= 6:
+        raise ValueError(
+            "Give timestamp in the form 'month,day,hour,minute,second,nanosecond'. "
+            + "Month is required. All must be integers."
+        )
+    year = pb.header.year
+    nano = timestamp.pop(5) if len(timestamp) == 6 else 0
+    diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
+    seconds = int(diff.total_seconds())
+    return seconds, nano
 
 
 def aa_reduce_to_period():
@@ -253,18 +238,23 @@ def aa_reduce_to_period():
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     txt_filepath = new_pb.with_suffix(".txt")
-    pb = PBUtils(chunk_size=args.chunk)
-    last_sample = None
-    while pb.read_done is False:
-        pb.read_pb(filename)
-        pb.samples = apply_min_period(
-            pb.samples, period=args.period, initial_sample=last_sample
+    pb = PBUtils(filename)
+    with open(new_pb, "wb") as f:
+        f.write(pb.serialize(pb.header))
+        f.writelines(
+            pb.serialize(sample) for sample in apply_min_period(pb, args.period)
         )
-        pb.write_pb(new_pb)
-        if args.write_txt:
-            pb.write_to_txt(txt_filepath)
-        if pb.samples:
-            last_sample = pb.samples[-1]
+    if args.write_txt:
+        txt_filepath = new_pb.with_suffix(".txt")
+        with open(txt_filepath, "w") as f:
+            # Write header
+            f.write(f"{pb.header.pvname}, {pb.pv_type}, {pb.header.year}\n")
+            # Write column titles
+            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            f.writelines(
+                pb.format_datastr(sample)
+                for sample in apply_min_period(pb, args.period)
+            )
 
 
 def aa_reduce_by_factor():
@@ -281,16 +271,23 @@ def aa_reduce_by_factor():
     if args.backup_filename is not None:
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
-    txt_filepath = new_pb.with_suffix(".txt")
-    pb = PBUtils(chunk_size=args.chunk)
-    initial = 0
-    while pb.read_done is False:
-        pb.read_pb(filename)
-        pb.samples = keep_every_nth(pb.samples, args.factor, initial=initial)
-        pb.write_pb(new_pb)
-        if args.write_txt:
-            pb.write_to_txt(txt_filepath)
-        initial = (args.chunk + initial) % args.factor
+    pb = PBUtils(filename)
+    with open(new_pb, "wb") as f:
+        f.write(pb.serialize(pb.header))
+        f.writelines(
+            pb.serialize(sample) for sample in reduce_by_factor(pb, args.factor)
+        )
+    if args.write_txt:
+        txt_filepath = new_pb.with_suffix(".txt")
+        with open(txt_filepath, "w") as f:
+            # Write header
+            f.write(f"{pb.header.pvname}, {pb.pv_type}, {pb.header.year}\n")
+            # Write column titles
+            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            f.writelines(
+                pb.format_datastr(sample)
+                for sample in reduce_by_factor(pb, args.factor)
+            )
 
 
 def aa_remove_data_before():
@@ -311,33 +308,25 @@ def aa_remove_data_before():
     if args.backup_filename is not None:
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
-    timestamp = [int(value) for value in args.timestamp.split(",")]
-    if not len(timestamp) <= 6:
-        raise ValueError(
-            "Give timestamp in the form 'month,day,hour,minute,second,nanosecond'. "
-            + "Month is required. All must be integers."
+    pb = PBUtils(filename)
+    seconds, nano = process_timestamp(pb, args.timestamp)
+
+    with open(new_pb, "wb") as f:
+        f.write(pb.serialize(pb.header))
+        f.writelines(
+            pb.serialize(sample) for sample in remove_before_ts(pb, seconds, nano)
         )
-
-    pb_header = PBUtils(Path(args.filename), chunk_size=0)
-    year = pb_header.header.year
-
-    if len(timestamp) == 6:
-        nano = timestamp.pop(5)
-    else:
-        nano = 0
-    if len(timestamp) == 1:
-        timestamp.append(1)
-
-    diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
-    seconds = int(diff.total_seconds())
-    txt_filepath = new_pb.with_suffix(".txt")
-    pb = PBUtils(chunk_size=args.chunk)
-    while pb.read_done is False:
-        pb.read_pb(filename)
-        pb.samples = remove_before_ts(pb.samples, seconds, nano=nano)
-        pb.write_pb(new_pb)
-        if args.write_txt:
-            pb.write_to_txt(txt_filepath)
+    if args.write_txt:
+        txt_filepath = new_pb.with_suffix(".txt")
+        with open(txt_filepath, "w") as f:
+            # Write header
+            f.write(f"{pb.header.pvname}, {pb.pv_type}, {pb.header.year}\n")
+            # Write column titles
+            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            f.writelines(
+                pb.format_datastr(sample)
+                for sample in remove_before_ts(pb, seconds, nano)
+            )
 
 
 def aa_remove_data_after():
@@ -358,30 +347,22 @@ def aa_remove_data_after():
     if args.backup_filename is not None:
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
-    timestamp = [int(value) for value in args.timestamp.split(",")]
-    if not len(timestamp) <= 6:
-        raise ValueError(
-            "Give timestamp in the form 'month,day,hour,minute,second,nanosecond'. "
-            + "Month is required. All must be integers."
+    pb = PBUtils(filename)
+    seconds, nano = process_timestamp(pb, args.timestamp)
+
+    with open(new_pb, "wb") as f:
+        f.write(pb.serialize(pb.header))
+        f.writelines(
+            pb.serialize(sample) for sample in remove_after_ts(pb, seconds, nano)
         )
-
-    pb_header = PBUtils(Path(args.filename), chunk_size=0)
-    year = pb_header.header.year
-
-    if len(timestamp) == 6:
-        nano = timestamp.pop(5)
-    else:
-        nano = 0
-    if len(timestamp) == 1:
-        timestamp.append(1)
-
-    diff = datetime(*([year] + timestamp)) - datetime(year, 1, 1)
-    seconds = int(diff.total_seconds())
-    txt_filepath = new_pb.with_suffix(".txt")
-    pb = PBUtils(chunk_size=args.chunk)
-    while pb.read_done is False:
-        pb.read_pb(filename)
-        pb.samples = remove_after_ts(pb.samples, seconds, nano=nano)
-        pb.write_pb(new_pb)
-        if args.write_txt:
-            pb.write_to_txt(txt_filepath)
+    if args.write_txt:
+        txt_filepath = new_pb.with_suffix(".txt")
+        with open(txt_filepath, "w") as f:
+            # Write header
+            f.write(f"{pb.header.pvname}, {pb.pv_type}, {pb.header.year}\n")
+            # Write column titles
+            f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            f.writelines(
+                pb.format_datastr(sample)
+                for sample in remove_after_ts(pb, seconds, nano)
+            )
