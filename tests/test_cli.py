@@ -54,19 +54,6 @@ def test_cli_pb_2_txt():
         write.unlink()
 
 
-def test_cli_pb_2_txt_chunked():
-    read = test_data / "RAW:2025_short.pb"
-    write = results / "RAW:2025_short_test_cli_pb_2_txt_chunked.txt"
-    expected = test_data / "RAW:2025_short.txt"
-    cmd = ["pb-2-txt", read, write, "--chunk=6"]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical is True
-    if are_identical:
-        write = Path(write)
-        write.unlink()
-
-
 def test_cli_reduce_to_period():
     read = test_data / "SCALAR_STRING_test_data.pb"
     write = results / "SCALAR_STRING_reduce_to_period.pb"
@@ -77,24 +64,6 @@ def test_cli_reduce_to_period():
         read,
         period,
         f"--new-filename={write}",
-    ]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
-def test_cli_reduce_to_period_chunked():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_reduce_to_period_chunked.pb"
-    expected = cli_output / "SCALAR_STRING_reduce_to_period.pb"
-    period = "4.5"
-    cmd = [
-        "aa-reduce-data-to-period",
-        read,
-        period,
-        f"--new-filename={write}",
-        "--chunk=17",
     ]
     subprocess.run(cmd)
     are_identical = filecmp.cmp(write, expected, shallow=False)
@@ -114,9 +83,10 @@ def test_cli_reduce_to_period_check_period():
     ]
     subprocess.run(cmd)
     pb = PBUtils(write)
-    for i in range(len(pb.samples) - 1):
-        seconds_diff = pb.samples[i + 1].secondsintoyear - pb.samples[i].secondsintoyear
-        nano_diff = pb.samples[i + 1].nano - pb.samples[i].nano
+    samples = list(pb.get_samples())
+    for i in range(len(samples) - 1):
+        seconds_diff = samples[i + 1].secondsintoyear - samples[i].secondsintoyear
+        nano_diff = samples[i + 1].nano - samples[i].nano
         assert seconds_diff >= period + 1 or (seconds_diff == period and nano_diff >= 0)
     write.unlink()
 
@@ -220,24 +190,6 @@ def test_cli_reduce_by_factor():
     write.unlink()
 
 
-def test_cli_reduce_by_factor_chunked():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_reduce_by_factor_chunked.pb"
-    expected = cli_output / "SCALAR_STRING_reduce_by_factor.pb"
-    factor = "3"
-    cmd = [
-        "aa-reduce-data-by-factor",
-        read,
-        factor,
-        f"--new-filename={write}",
-        "--chunk=13",
-    ]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
 def test_cli_reduce_by_factor_backup():
     read = test_data / "SCALAR_STRING_test_data.pb"
     write = results / "tmp.pb"
@@ -332,18 +284,6 @@ def test_cli_remove_before():
     write.unlink()
 
 
-def test_cli_remove_before_chunked():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_remove_before_chunked.pb"
-    expected = cli_output / "SCALAR_STRING_remove_before.pb"
-    ts = "1,1,0,1,5"
-    cmd = ["aa-remove-data-before", read, ts, f"--new-filename={write}", "--chunk=37"]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
 def test_cli_remove_before_backup():
     read = test_data / "SCALAR_STRING_test_data.pb"
     write = results / "tmp.pb"
@@ -432,18 +372,6 @@ def test_cli_remove_after():
     expected = cli_output / "SCALAR_STRING_remove_after.pb"
     ts = "1,1,0,1,5"
     cmd = ["aa-remove-data-after", read, ts, f"--new-filename={write}"]
-    subprocess.run(cmd)
-    are_identical = filecmp.cmp(write, expected, shallow=False)
-    assert are_identical
-    write.unlink()
-
-
-def test_cli_remove_after_chunked():
-    read = test_data / "SCALAR_STRING_test_data.pb"
-    write = results / "SCALAR_STRING_remove_after_chunked.pb"
-    expected = cli_output / "SCALAR_STRING_remove_after.pb"
-    ts = "1,1,0,1,5"
-    cmd = ["aa-remove-data-after", read, ts, f"--new-filename={write}", "--chunk=37"]
     subprocess.run(cmd)
     are_identical = filecmp.cmp(write, expected, shallow=False)
     assert are_identical
