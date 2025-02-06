@@ -2,15 +2,76 @@
 
 from pathlib import Path
 
-from aa_remove_data.pb_utils import PBUtils
+from aa_remove_data.archiver_data import ArchiverData
+from aa_remove_data.generated import EPICSEvent_pb2
+
+
+class ArchiverDataGenerated(ArchiverData):
+    def __init__(
+        self,
+        samples: int = 100,
+        pv_type: int = 6,
+        year: int = 2024,
+        start: int = 0,
+        seconds_gap: int = 1,
+        nano_gap: int = 0,
+    ):
+        self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
+        self.header.pvname = "generated_test_data"
+        self.header.year = year
+        self.header.type = pv_type
+        self.pv_type = self.get_pv_type()
+        self.samples = samples
+        self.start = start
+        self.seconds_gap = seconds_gap
+        self.nano_gap = nano_gap
+
+    def get_samples(self):
+        """Read a PB file that is structured in the Archiver Appliance format.
+        Gathers the header and samples from this file and assigns them to
+        self.header self.samples.
+
+        Args:
+            filepath (PathLike): Path to PB file.
+        """
+        proto_class = self.get_proto_class()
+        time_gap = self.seconds_gap * 10**9 + self.nano_gap
+        time = self.start * 10**9
+        for i in range(self.samples):
+            sample = proto_class()
+            sample.secondsintoyear = time // 10**9
+            sample.nano = time % 10**9
+            if self.pv_type.startswith("WAVEFORM"):
+                sample.val.extend(
+                    [self.generate_test_value(i * 5 + j) for j in range(5)]
+                )
+            else:
+                sample.val = self.generate_test_value(i)
+            time += time_gap
+            yield sample
+
+    def generate_test_value(self, val: int) -> str | bytes | int:
+        """Generate an appropriate value for a sample based on it's pv type.
+
+        Args:
+            val (int): The original value.
+
+        Returns:
+            str | bytes | int: The value converted to an oppropriate type.
+        """
+        if self.pv_type.endswith("STRING"):
+            return str(val)
+        elif self.pv_type.endswith("BYTE") or self.pv_type.endswith("BYTES"):
+            return val.to_bytes(2, byteorder="big")
+        else:
+            return val
 
 
 def generate_test_data():
-    pb = PBUtils()
     for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14):
-        pb.generate_test_samples(pv_type=i, start=i * 100)
-        pb.write_to_txt(Path(f"tests/test_data/{pb.pv_type}_test_data.txt"))
-        pb.write_pb(Path(f"tests/test_data/{pb.pv_type}_test_data.pb"))
+        adg = ArchiverDataGenerated(pv_type=i, start=i * 100)
+        adg.write_txt(Path(f"tests/test_data/{adg.pv_type}_test_data.txt"))
+        adg.write_pb(Path(f"tests/test_data/{adg.pv_type}_test_data.pb"))
 
 
 if __name__ == "__main__":

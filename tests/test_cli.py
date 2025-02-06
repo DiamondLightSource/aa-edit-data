@@ -5,7 +5,7 @@ from os import PathLike
 from pathlib import Path
 
 from aa_remove_data import __version__
-from aa_remove_data.pb_utils import PBUtils
+from aa_remove_data.archiver_data import ArchiverData
 
 test_data = Path("tests/test_data")
 cli_output = Path("tests/test_data/cli_expected_output")
@@ -82,8 +82,8 @@ def test_cli_reduce_to_period_check_period():
         f"--new-filename={write}",
     ]
     subprocess.run(cmd)
-    pb = PBUtils(write)
-    samples = list(pb.get_samples())
+    ad = ArchiverData(write)
+    samples = list(ad.get_samples())
     for i in range(len(samples) - 1):
         seconds_diff = samples[i + 1].secondsintoyear - samples[i].secondsintoyear
         nano_diff = samples[i + 1].nano - samples[i].nano
