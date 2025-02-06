@@ -47,7 +47,7 @@ def get_seconds_diff(sample1: Any, sample2: Any) -> int:
     return diff
 
 
-def filter_samples_to_period(ad: Any, period: float) -> Iterator:
+def filter_samples_to_period(samples: Iterator, period: float) -> Iterator:
     """Reduce the frequency of a list of samples. Specify the desired minimum period.
 
     Args:
@@ -70,17 +70,17 @@ def filter_samples_to_period(ad: Any, period: float) -> Iterator:
         delta = nano_delta  # For short periods still count nano
         get_diff = get_nano_diff
 
-    first_sample = next(ad.get_samples())
+    first_sample = next(samples)
     yield first_sample
     last_yielded_sample = first_sample
-    for sample in islice(ad.get_samples(), 1, None):
+    for sample in islice(samples, 1, None):
         if get_diff(last_yielded_sample, sample) >= delta:
             last_yielded_sample = sample
             yield sample
 
 
-def apply_min_period(ad, period):
-    return (sample for sample in filter_samples_to_period(ad, period))
+def apply_min_period(samples: Iterator, period: float):
+    return (sample for sample in filter_samples_to_period(samples, period))
 
 
 def is_before(sample, seconds, nano):
@@ -101,7 +101,7 @@ def is_after(sample, seconds, nano):
         return False
 
 
-def remove_before_ts(ad: Any, seconds: int, nano: int = 0) -> Iterator:
+def remove_before_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator:
     """Remove all samples before a certain timestamp.
 
     Args:
@@ -112,12 +112,13 @@ def remove_before_ts(ad: Any, seconds: int, nano: int = 0) -> Iterator:
     Returns:
         list: Reduced list of samples.
     """
-    return (
-        sample for sample in ad.get_samples() if not is_before(sample, seconds, nano)
-    )
+    if nano >= 10**9 or nano < 0:
+        seconds += nano // (10**9)
+        nano = nano % (10**9)
+    return (sample for sample in samples if not is_before(sample, seconds, nano))
 
 
-def remove_after_ts(ad: Any, seconds: int, nano: int = 0) -> Iterator:
+def remove_after_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator:
     """Remove all samples after a certain timestamp.
 
     Args:
@@ -128,24 +129,27 @@ def remove_after_ts(ad: Any, seconds: int, nano: int = 0) -> Iterator:
     Returns:
         list: Reduced list of samples.
     """
-    return (
-        sample for sample in ad.get_samples() if not is_after(sample, seconds, nano)
-    )
+    if nano >= 10**9 or nano < 0:
+        seconds += nano // (10**9)
+        nano = nano % (10**9)
+    return (sample for sample in samples if not is_after(sample, seconds, nano))
 
 
-def reduce_by_factor(ad, n) -> Iterator:
+def reduce_by_factor(samples: Iterator, factor) -> Iterator:
     """Reduce the size of a list of samples, keeping every nth sample and
     removing the rest.
 
     Args:
         samples (list): List of samples
-        n (int): Every nth sample will be kept.
+        factor (int): Factor to reduce the data by.
         initial (int, optional): End point of processing from a previous chunk.
 
     Returns:
         list: Reduced list of samples.
     """
-    return (sample for i, sample in enumerate(ad.get_samples()) if i % n == 0)
+    if factor < 0:
+        raise ValueError(f"Factor ({factor}) should be > 0.")
+    return (sample for i, sample in enumerate(samples) if i % factor == 0)
 
 
 def add_generic_args(parser):
@@ -256,7 +260,7 @@ def aa_reduce_by_factor():
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     ad = ArchiverData(filename)
-    ad.process_and_write(new_pb, args.write_txt, apply_min_period, [args.factor])
+    ad.process_and_write(new_pb, args.write_txt, reduce_by_factor, [args.factor])
 
 
 def aa_remove_data_before():

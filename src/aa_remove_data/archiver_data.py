@@ -54,7 +54,9 @@ class ArchiverData:
             f.write(self.serialize(self.header))
             f.writelines(
                 self.serialize(sample)
-                for sample in process_func(self, *process_args, **process_kwargs)
+                for sample in process_func(
+                    self.get_samples(), *process_args, **process_kwargs
+                )
             )
         if write_txt:
             txt_filepath = filepath.with_suffix(".txt")
@@ -65,7 +67,9 @@ class ArchiverData:
                 f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
                 f.writelines(
                     self.format_datastr(sample, self.header.year)
-                    for sample in process_func(self, *process_args, **process_kwargs)
+                    for sample in process_func(
+                        self.get_samples(), *process_args, **process_kwargs
+                    )
                 )
 
     def write_pb(self, filepath: PathLike):
