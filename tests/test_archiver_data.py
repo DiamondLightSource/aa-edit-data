@@ -5,7 +5,21 @@ from pathlib import Path
 import pytest
 
 from aa_remove_data.archiver_data import ArchiverData
+from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
 from aa_remove_data.generated import EPICSEvent_pb2
+
+
+class ArchiverDataDummy(ArchiverData):
+    def __init__(self, samples: list | None = None):
+        self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
+        self.samples = samples if samples else []
+        self.pv_type = ""
+
+    def get_samples(self, deserialize=True):
+        yield from (
+            self.deserialize(sample, self.get_proto_class()) if deserialize else sample
+            for sample in self.samples
+        )
 
 
 def test_replace_newline_chars_escape_character():
@@ -76,37 +90,11 @@ def test_restore_newline_chars_all():
     assert expected == result
 
 
-def test_get_proto_class_name():
-    pv_type_to_class_name = {
-        "SCALAR_STRING": "ScalarString",
-        "SCALAR_SHORT": "ScalarShort",
-        "SCALAR_FLOAT": "ScalarFloat",
-        "SCALAR_ENUM": "ScalarEnum",
-        "SCALAR_BYTE": "ScalarByte",
-        "SCALAR_INT": "ScalarInt",
-        "SCALAR_DOUBLE": "ScalarDouble",
-        "WAVEFORM_STRING": "VectorString",
-        "WAVEFORM_SHORT": "VectorShort",
-        "WAVEFORM_FLOAT": "VectorFloat",
-        "WAVEFORM_ENUM": "VectorEnum",
-        "WAVEFORM_BYTE": "VectorByte",
-        "WAVEFORM_INT": "VectorInt",
-        "WAVEFORM_DOUBLE": "VectorDouble",
-        "V4_GENERIC_BYTES": "V4GenericBytes",
-    }
-    pb = ArchiverData()
-    for pv_type, expected_class_name in pv_type_to_class_name.items():
-        pb.pv_type = pv_type
-        result = pb._get_proto_class_name()
-        assert result == expected_class_name
-
-
 def test_convert_to_datetime():
-    pb = ArchiverData()
     year = 2024
     seconds = 31537000
     expected = datetime(2024, 12, 31, 0, 16, 40)
-    result = pb.convert_to_datetime(year, seconds)
+    result = ArchiverData.convert_to_datetime(year, seconds)
     assert result == expected, f"Got {result}, expected {expected}."
 
     year = 2013
@@ -117,46 +105,43 @@ def test_convert_to_datetime():
     second = 35
     seconds = 86400 * (31 * 2 + 28 + 30 + day - 1) + hour * 3600 + minute * 60 + second
     expected = datetime(year, month, day, hour, minute, second)
-    result = pb.convert_to_datetime(year, seconds)
+    result = ArchiverData.convert_to_datetime(year, seconds)
     assert result == expected
 
 
 def test_convert_to_datetime_too_many_seconds_fails():
-    pb = ArchiverData()
     with pytest.raises(ValueError):
-        pb.convert_to_datetime(2023, 31536000)
+        ArchiverData.convert_to_datetime(2023, 31536000)
 
     with pytest.raises(ValueError):
-        pb.convert_to_datetime(2024, 31622400)  # Leap year
+        ArchiverData.convert_to_datetime(2024, 31622400)  # Leap year
 
 
 def test_convert_to_datetime_negative_seconds_fails():
-    pb = ArchiverData()
     with pytest.raises(ValueError):
-        pb.convert_to_datetime(2023, -1)
+        ArchiverData.convert_to_datetime(2023, -1)
 
     with pytest.raises(ValueError):
-        pb.convert_to_datetime(2024, -100000000)
+        ArchiverData.convert_to_datetime(2024, -100000000)
 
 
 def test_format_datastr():
-    pb = ArchiverData()
     sample = EPICSEvent_pb2.ScalarDouble()  # type: ignore
     sample.secondsintoyear = 31535999
     sample.nano = 123456789
     sample.val = 987654321
     expected = "2010-12-31 23:59:59    31535999    123456789    987654321.0\n"
-    result = pb.format_datastr(sample, 2010)
+    result = ArchiverData.format_datastr(sample, 2010)
     assert result == expected
 
 
 def test_assign_invalid_pv_type_num():
-    pb = ArchiverData()
+    ad = ArchiverDataDummy()
     # Only types 0-14 (inclusive) are valid
     with pytest.raises(ValueError):
-        pb.header.type = 15
+        ad.header.type = 15
     with pytest.raises(ValueError):
-        pb.header.type = -1
+        ad.header.type = -1
 
 
 def test_get_pv_type():
@@ -177,11 +162,36 @@ def test_get_pv_type():
         "WAVEFORM_DOUBLE": 13,
         "V4_GENERIC_BYTES": 14,
     }
-    pb = ArchiverData()
+    ad = ArchiverDataGenerated()
     for expected_pv_type, num in pv_type_enum.items():
-        pb.header.type = num
-        result = pb.get_pv_type()
+        ad.header.type = num
+        result = ad.get_pv_type()
         assert result == expected_pv_type
+
+
+def test_get_proto_class_name():
+    pv_type_to_class_name = {
+        "SCALAR_STRING": "ScalarString",
+        "SCALAR_SHORT": "ScalarShort",
+        "SCALAR_FLOAT": "ScalarFloat",
+        "SCALAR_ENUM": "ScalarEnum",
+        "SCALAR_BYTE": "ScalarByte",
+        "SCALAR_INT": "ScalarInt",
+        "SCALAR_DOUBLE": "ScalarDouble",
+        "WAVEFORM_STRING": "VectorString",
+        "WAVEFORM_SHORT": "VectorShort",
+        "WAVEFORM_FLOAT": "VectorFloat",
+        "WAVEFORM_ENUM": "VectorEnum",
+        "WAVEFORM_BYTE": "VectorByte",
+        "WAVEFORM_INT": "VectorInt",
+        "WAVEFORM_DOUBLE": "VectorDouble",
+        "V4_GENERIC_BYTES": "V4GenericBytes",
+    }
+    ad = ArchiverDataDummy()
+    for pv_type, expected_class_name in pv_type_to_class_name.items():
+        ad.pv_type = pv_type
+        result = ad._get_proto_class_name()
+        assert result == expected_class_name
 
 
 def test_get_proto_class():
@@ -204,19 +214,19 @@ def test_get_proto_class():
         14: EPICSEvent_pb2.V4GenericBytes,  # type: ignore
     }
     for pv_type_num, expected_class in pv_type_num_to_proto_class.items():
-        pb = ArchiverData()
-        pb.header.type = pv_type_num
-        result = pb.get_proto_class()
+        ad = ArchiverDataDummy()
+        ad.header.type = pv_type_num
+        ad.pv_type = ad.get_pv_type()
+        result = ad.get_proto_class()
         assert result == expected_class
 
 
 def test_generate_test_samples_gaps():
-    pb = ArchiverData()
     seconds_gaps = [2, 7, 20, 1, 3214, 0, -7]
     nano_gaps = [500000000, 1, 93184, 0, 999999999, 383838, 5]
     start = 60000
     for i in range(len(seconds_gaps)):
-        pb.generate_test_samples(
+        adg = ArchiverDataGenerated(
             pv_type=1,
             samples=10,
             year=2024,
@@ -225,17 +235,16 @@ def test_generate_test_samples_gaps():
             nano_gap=nano_gaps[i],
         )
         gap = seconds_gaps[i] * 10**9 + nano_gaps[i]
-        for i, sample in enumerate(pb.samples):
+        for i, sample in enumerate(adg.get_samples()):
             assert sample.secondsintoyear == start + (gap * i) // 10**9
             assert sample.nano == (gap * i) % 10**9
 
 
 def test_generate_test_samples_number_of_samples():
-    pb = ArchiverData()
     n_samples = [1, 0, 1000, 50, 13049, 238]
     for n in n_samples:
-        pb.generate_test_samples(samples=n)
-        assert len(pb.samples) == n
+        adg = ArchiverDataGenerated(samples=n)
+        assert len(list(adg.get_samples())) == n
 
 
 def test_generate_test_samples_all_types():
@@ -256,16 +265,13 @@ def test_generate_test_samples_all_types():
         "WAVEFORM_DOUBLE": 13,
         "V4_GENERIC_BYTES": 14,
     }
-    pb = ArchiverData()
     for pv_type, num in pv_type_enum.items():
-        pb.generate_test_samples(pv_type=num)
-        assert pb.pv_type == pv_type
-        assert pb.samples
+        adg = ArchiverDataGenerated(pv_type=num)
+        assert adg.pv_type == pv_type
+        assert adg.samples
 
 
-def test_write_to_txt():
-    pb = ArchiverData()
-    pb.header.ParseFromString(b"\x08\x06\x12\x04test\x18\xe8\x0f")
+def test_write_txt():
     samples_b = [
         b"\x08\x80\xa0\xc0\x0e\x10\x00\x19\x00\x00\x00\x00\x00\x00\x00\x00",
         b"\x08\x99\xa0\xc0\x0e\x10\x80\xca\xb5\xee\x01\x19\x00\x00\x00\x00\x00\x00\xf0?",
@@ -273,14 +279,14 @@ def test_write_to_txt():
         b"\x08\xcc\xa0\xc0\x0e\x10\x80\xca\xb5\xee\x01\x19\x00\x00\x00\x00\x00\x00\x08@",
         b"\x08\xe6\xa0\xc0\x0e\x10\x00\x19\x00\x00\x00\x00\x00\x00\x10@",
     ]
-    proto_class = pb.get_proto_class()
-    pb.samples = [proto_class() for _ in range(len(samples_b))]
-    for i, sample in enumerate(pb.samples):
-        sample.ParseFromString(samples_b[i])
+
+    ad = ArchiverDataDummy(samples_b)
+    ad.header.ParseFromString(b"\x08\x06\x12\x04test\x18\xe8\x0f")
+    ad.pv_type = ad.get_pv_type()
 
     expected = Path("tests/expected_write_to.txt")
     result = Path("tests/result_write_to.txt")
-    pb.write_to_txt(Path("tests/result_write_to.txt"))
+    ad.write_txt(Path("tests/result_write_to.txt"))
     are_identical = filecmp.cmp(expected, result, shallow=False)
     if are_identical is True:
         result.unlink()  # Delete results file if test passes
@@ -290,8 +296,8 @@ def test_write_to_txt():
 def test_read_write_pb():
     read = Path("tests/test_data/P:2021_short.pb")
     write = Path("tests/test_data/P:2021_short_write_result.pb")
-    pb = ArchiverData(read)
-    pb.write_pb(write)
+    ad = ArchiverData(read)
+    ad.write_pb(write)
     are_identical = filecmp.cmp(read, write, shallow=False)
     if are_identical is True:
         write.unlink()  # Delete results file if test passes
@@ -330,9 +336,9 @@ def test_read_write_pb_all_types():
     for pv_type in pv_types:
         read = Path(f"tests/test_data/{pv_type}_test_data.pb")
         write = Path(f"tests/test_data/result_write_{pv_type}_test_data.pb")
-        pb = ArchiverData(read)
-        assert pb.pv_type == pv_type
-        pb.write_pb(write)
+        ad = ArchiverData(read)
+        assert ad.pv_type == pv_type
+        ad.write_pb(write)
         are_identical = filecmp.cmp(read, write, shallow=False)
         if are_identical is True:
             write.unlink()  # Delete results file if test passes
