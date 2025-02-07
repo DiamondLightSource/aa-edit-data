@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from itertools import islice
@@ -6,8 +7,6 @@ from os import PathLike
 from pathlib import Path
 
 from aa_remove_data.generated import EPICSEvent_pb2
-
-DEFAULT_CHUNK_SIZE = 10000000
 
 
 class ArchiverData:
@@ -50,6 +49,11 @@ class ArchiverData:
         process_args = process_args or []
         process_kwargs = process_kwargs or {}
         filepath = Path(filepath)
+        txt_filepath = filepath.with_suffix(".txt")
+        mv_to = ""
+        if filepath == self.filepath:
+            mv_to = filepath
+            filepath = self.get_temp_filename(filepath)
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
             f.writelines(
@@ -58,8 +62,9 @@ class ArchiverData:
                     self.get_samples(), *process_args, **process_kwargs
                 )
             )
+        if mv_to:
+            subprocess.run(["mv", filepath, mv_to], check=True)
         if write_txt:
-            txt_filepath = filepath.with_suffix(".txt")
             with open(txt_filepath, "w") as f:
                 # Write header
                 f.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
@@ -196,15 +201,26 @@ class ArchiverData:
         parts = [x.replace("WAVEFORM", "Vector") for x in parts]
         return "".join(part.capitalize() for part in parts)
 
+    @staticmethod
+    def get_temp_filename(filename):
+        filename = Path(filename)
+        filename = filename.with_stem(f"{filename.stem}_tmp")
+        if filename.exists():
+            filename = ArchiverData.get_temp_filename(filename)
+        return filename
+
 
 def pb_2_txt():
     """Convert a .pb file to a human-readable .txt file."""
     parser = argparse.ArgumentParser()
     parser.add_argument("pb_filename", type=str)
-    parser.add_argument("txt_filename", type=str)
+    parser.add_argument("txt_filename", nargs="?", type=str, default="")
     args = parser.parse_args()
     pb_file = Path(args.pb_filename)
-    txt_file = Path(args.txt_filename)
+    txt_file = (
+        Path(args.txt_filename) if args.txt_filename else pb_file.with_suffix(".txt")
+    )
+    print(f"Writing {txt_file}")
     # Validation
     if pb_file.suffix != ".pb":
         raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
