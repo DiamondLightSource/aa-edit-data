@@ -2,7 +2,6 @@ import argparse
 import subprocess
 from collections.abc import Iterator
 from datetime import datetime
-from itertools import islice
 from pathlib import Path
 from typing import Any
 
@@ -73,7 +72,7 @@ def filter_samples_to_period(samples: Iterator, period: float) -> Iterator:
     first_sample = next(samples)
     yield first_sample
     last_yielded_sample = first_sample
-    for sample in islice(samples, 1, None):
+    for sample in samples:
         if get_diff(last_yielded_sample, sample) >= delta:
             last_yielded_sample = sample
             yield sample
