@@ -174,14 +174,14 @@ def test_remove_before_ts_at_min():
 def test_remove_before_ts_increasing():
     filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
     for seconds, nano in zip(
-        range(105, 210), range(0, 10 * 10**9, 30000000), strict=False
+        range(210, 420, 2), range(0, 20 * 10**9, 60000000), strict=False
     ):
         ad = ArchiverData(filename)
         samples = list(
             remove_data.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
 
-        if seconds * 10**9 + nano > 199 * 10**9:
+        if seconds * 10**9 + nano > 398 * 10**9:
             assert samples == []
         else:
             expected_min_nanoseconds = seconds * 10**9 + nano
@@ -197,14 +197,14 @@ def test_remove_before_ts_decreasing():
     filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
     ad = ArchiverData(filename)
     for seconds, nano in zip(
-        range(195, 90, -1), range(0, -(10 * 10**9), -30000000), strict=False
+        range(390, 180, -2), range(0, -(20 * 10**9), -60000000), strict=False
     ):
         ad = ArchiverData(filename)
         samples = list(
             remove_data.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
 
-        if seconds * 10**9 + nano < 100 * 10**9:
+        if seconds * 10**9 + nano < 200 * 10**9:
             assert samples == list(ad.get_samples())
         else:
             expected_min_nanoseconds = seconds * 10**9 + nano
@@ -304,13 +304,13 @@ def test_remove_after_ts_increasing():
     filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
     ad = ArchiverData(filename)
     for seconds, nano in zip(
-        range(105, 210), range(0, 10 * 10**9, 30000000), strict=False
+        range(210, 420, 2), range(0, 20 * 10**9, 60000000), strict=False
     ):
         samples = list(
             remove_data.remove_after_ts(ad.get_samples(), seconds, nano=nano)
         )
 
-        if seconds * 10**9 + nano >= 199 * 10**9:
+        if seconds * 10**9 + nano >= 398 * 10**9:
             assert samples == list(ad.get_samples())
         else:
             expected_max_nanoseconds = seconds * 10**9 + nano
@@ -326,13 +326,13 @@ def test_remove_after_ts_decreasing():
     filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
     ad = ArchiverData(filename)
     for seconds, nano in zip(
-        range(195, 90, -1), range(0, -(10 * 10**9), -30000000), strict=False
+        range(390, 180, -2), range(0, -(20 * 10**9), -60000000), strict=False
     ):
         samples = list(
             remove_data.remove_after_ts(ad.get_samples(), seconds, nano=nano)
         )
 
-        if seconds * 10**9 + nano < 100 * 10**9:
+        if seconds * 10**9 + nano < 200 * 10**9:
             assert samples == []
         else:
             expected_max_nanoseconds = seconds * 10**9 + nano
