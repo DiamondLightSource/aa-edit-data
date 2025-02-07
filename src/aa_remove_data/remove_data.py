@@ -259,7 +259,9 @@ def aa_reduce_by_factor():
         subprocess.run(["cp", filename, Path(args.backup_filename)], check=True)
 
     ad = ArchiverData(filename)
-    ad.process_and_write(new_pb, args.write_txt, reduce_by_factor, [args.factor])
+    ad.process_and_write(
+        new_pb, args.write_txt, reduce_by_factor, [args.factor], deserialize=False
+    )
 
 
 def aa_remove_data_before():

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from itertools import islice
 from os import PathLike
 from pathlib import Path
+from typing import Any
 
 from aa_remove_data.generated import EPICSEvent_pb2
 
@@ -38,6 +39,17 @@ class ArchiverData:
             for line in islice(f, 1, None):
                 yield self.deserialize(line, proto_class)
 
+    def get_samples_bytes(self):
+        """Read a PB file that is structured in the Archiver Appliance format.
+        Gathers the header and samples from this file and assigns them to
+        self.header self.samples.
+
+        Args:
+            filepath (PathLike): Path to PB file.
+        """
+        with open(self.filepath, "rb") as f:
+            yield from islice(f, 1, None)
+
     def process_and_write(
         self,
         filepath: PathLike,
@@ -45,6 +57,7 @@ class ArchiverData:
         process_func: Callable,
         process_args: list | None = None,
         process_kwargs: dict | None = None,
+        deserialize: bool = True,
     ):
         process_args = process_args or []
         process_kwargs = process_kwargs or {}
@@ -56,12 +69,24 @@ class ArchiverData:
             filepath = self.get_temp_filename(filepath)
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
-            f.writelines(
-                self.serialize(sample)
-                for sample in process_func(
-                    self.get_samples(), *process_args, **process_kwargs
+            if deserialize:
+                f.writelines(
+                    self.serialize(sample)
+                    for sample in process_func(
+                        self.get_samples(),
+                        *process_args,
+                        **process_kwargs,
+                    )
                 )
-            )
+            else:
+                f.writelines(
+                    sample
+                    for sample in process_func(
+                        self.get_samples_bytes(),
+                        *process_args,
+                        **process_kwargs,
+                    )
+                )
         if mv_to:
             subprocess.run(["mv", filepath, mv_to], check=True)
         if write_txt:
@@ -73,7 +98,9 @@ class ArchiverData:
                 f.writelines(
                     self.format_datastr(sample, self.header.year)
                     for sample in process_func(
-                        self.get_samples(), *process_args, **process_kwargs
+                        self.get_samples(),
+                        *process_args,
+                        **process_kwargs,
                     )
                 )
 
@@ -81,7 +108,7 @@ class ArchiverData:
         filepath = Path(filepath)
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
-            f.writelines(self.serialize(sample) for sample in self.get_samples())
+            f.writelines(sample for sample in self.get_samples_bytes())
 
     def write_txt(self, filepath: PathLike):
         filepath = Path(filepath)
@@ -149,10 +176,13 @@ class ArchiverData:
         Returns:
             datetime: A datetime object of the correct date and time.
         """
-        return datetime(year, 1, 1) + timedelta(seconds=seconds)
+        ts = datetime(year, 1, 1) + timedelta(seconds=seconds)
+        if ts.year != year:
+            raise ValueError
+        return ts
 
     @staticmethod
-    def format_datastr(sample: type, year: int) -> str:
+    def format_datastr(sample: Any, year: int) -> str:
         """Get a string containing information about a sample.
         Args:
             sample (type): A sample from a PB file.
