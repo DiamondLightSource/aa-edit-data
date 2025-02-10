@@ -1,4 +1,3 @@
-import argparse
 import subprocess
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -238,44 +237,3 @@ class ArchiverData:
         if filename.exists():
             filename = ArchiverData.get_temp_filename(filename)
         return filename
-
-
-def pb_2_txt():
-    """Convert a .pb file to a human-readable .txt file."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("pb_filename", type=str)
-    parser.add_argument("txt_filename", nargs="?", type=str, default="")
-    args = parser.parse_args()
-    pb_file = Path(args.pb_filename)
-    txt_file = (
-        Path(args.txt_filename) if args.txt_filename else pb_file.with_suffix(".txt")
-    )
-    print(f"Writing {txt_file}")
-    # Validation
-    if pb_file.suffix != ".pb":
-        raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
-
-    ad = ArchiverData(pb_file)
-    ad.write_txt(txt_file)
-    print("Write completed!")
-
-
-def print_header():
-    """Print the header and first few lines of a .pb file."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("pb_filename", type=str)
-    parser.add_argument("--lines", type=int, default=0)
-    parser.add_argument("--start", type=int, default=0)
-    args = parser.parse_args()
-    pb_file = Path(args.pb_filename)
-    lines = args.lines
-    # Validation
-    if pb_file.suffix != ".pb":
-        raise ValueError(f"Invalid file extension: '{pb_file.suffix}'. Expected '.pb'.")
-
-    ad = ArchiverData(pb_file)
-    print(f"Name: {ad.header.pvname}, Type: {ad.pv_type}, Year: {ad.header.year}")
-    if lines:
-        print(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL")
-        for sample in islice(ad.get_samples(), args.start, args.start + lines):
-            print(ad.format_datastr(sample, ad.header.year).strip())
