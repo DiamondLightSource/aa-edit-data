@@ -16,8 +16,10 @@ app = typer.Typer()
 
 FILENAME_ARGUMENT = typer.Argument(help="path/to/file.pb of PB file being processed")
 NEW_FILENAME_OPTION = typer.Option(None, help="path/to/file.pb of new file to write to")
-BACKUP_FILENAME_OPTION = typer.Option(help="path/to/file.pb of a backup file")
-WRITE_TXT_OPTION = typer.Option(False, "--write-txt", "-t")
+BACKUP_FILENAME_OPTION = typer.Option(None, help="path/to/file.pb of a backup file")
+WRITE_TXT_OPTION = typer.Option(
+    False, "--write-txt", "-t", help="Write result to text file"
+)
 
 
 @app.command()

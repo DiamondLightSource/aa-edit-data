@@ -1,5 +1,5 @@
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Generator, Iterator
 from datetime import datetime, timedelta
 from itertools import islice
 from os import PathLike
@@ -25,7 +25,7 @@ class ArchiverData:
             self.header = self.deserialize(f.readline(), EPICSEvent_pb2.PayloadInfo)  # type: ignore
         self.pv_type = self.get_pv_type()
 
-    def get_samples(self):
+    def get_samples(self) -> Generator:
         """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
@@ -38,7 +38,7 @@ class ArchiverData:
             for line in islice(f, 1, None):
                 yield self.deserialize(line, proto_class)
 
-    def get_samples_bytes(self):
+    def get_samples_bytes(self) -> Generator:
         """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
@@ -49,6 +49,27 @@ class ArchiverData:
         with open(self.filepath, "rb") as f:
             yield from islice(f, 1, None)
 
+    def get_processed_samples(
+        self,
+        process_func: Callable,
+        process_args: list | None = None,
+        process_kwargs: dict | None = None,
+        deserialize: bool = True,
+        serialize: bool = True,
+    ):
+        process_args = process_args or []
+        process_kwargs = process_kwargs or {}
+        if deserialize:
+            for sample in process_func(
+                self.get_samples(), *process_args, **process_kwargs
+            ):
+                yield self.serialize(sample) if serialize else sample
+        else:
+            for sample in process_func(
+                self.get_samples_bytes(), *process_args, **process_kwargs
+            ):
+                yield sample
+
     def process_and_write(
         self,
         filepath: PathLike,
@@ -58,76 +79,58 @@ class ArchiverData:
         process_kwargs: dict | None = None,
         deserialize: bool = True,
     ):
-        process_args = process_args or []
-        process_kwargs = process_kwargs or {}
         filepath = Path(filepath)
         txt_filepath = filepath.with_suffix(".txt")
+
         mv_to = ""
         if filepath == self.filepath:
             mv_to = filepath
             filepath = self.get_temp_filename(filepath)
-        with open(filepath, "wb") as f:
-            f.write(self.serialize(self.header))
-            if deserialize:
-                f.writelines(
-                    self.serialize(sample)
-                    for sample in process_func(
-                        self.get_samples(),
-                        *process_args,
-                        **process_kwargs,
-                    )
-                )
-            else:
-                f.writelines(
-                    sample
-                    for sample in process_func(
-                        self.get_samples_bytes(),
-                        *process_args,
-                        **process_kwargs,
-                    )
-                )
+
+        samples = self.get_processed_samples(
+            process_func,
+            process_args=process_args,
+            process_kwargs=process_kwargs,
+            deserialize=deserialize,
+            serialize=True,
+        )
+        self.write_pb(filepath, samples=samples)
         if mv_to:
             subprocess.run(["mv", filepath, mv_to], check=True)
         if write_txt:
-            with open(txt_filepath, "w") as f:
-                # Write header
-                f.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
-                # Write column titles
-                f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
-                f.writelines(
-                    self.format_datastr(sample, self.header.year)
-                    for sample in process_func(
-                        self.get_samples(),
-                        *process_args,
-                        **process_kwargs,
-                    )
-                )
+            txt_samples = self.get_processed_samples(
+                process_func,
+                process_args=process_args,
+                process_kwargs=process_kwargs,
+                deserialize=True,
+                serialize=False,
+            )
+            self.write_txt(txt_filepath, samples=txt_samples)
 
-    def write_pb(self, filepath: PathLike):
-        filepath = Path(filepath)
+    def write_pb(self, filepath: PathLike, samples: Iterator | None = None):
+        samples = samples or self.get_samples_bytes()
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
-            f.writelines(sample for sample in self.get_samples_bytes())
+            f.writelines(sample for sample in samples)
 
-    def write_txt(self, filepath: PathLike):
-        filepath = Path(filepath)
-        txt_filepath = filepath.with_suffix(".txt")
-        with open(txt_filepath, "w") as f:
+    def write_txt(self, filepath: PathLike, samples: Iterator | None = None):
+        samples = samples or self.get_samples()
+        with open(filepath, "w") as f:
             # Write header
             f.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
             # Write column titles
             f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            # Write samples
             f.writelines(
-                self.format_datastr(sample, self.header.year)
-                for sample in self.get_samples()
+                self.format_datastr(sample, self.header.year) for sample in samples
             )
 
     @staticmethod
-    def serialize(sample):
+    def serialize(sample: Any) -> bytes:
         return ArchiverData._replace_newline_chars(sample.SerializeToString()) + b"\n"
 
     @staticmethod
-    def deserialize(line, proto_class):
+    def deserialize(line: bytes, proto_class: Callable) -> Any:
         sample_bytes = ArchiverData._restore_newline_chars(line.rstrip(b"\n"))
         sample = proto_class()
         sample.ParseFromString(sample_bytes)
@@ -231,7 +234,7 @@ class ArchiverData:
         return "".join(part.capitalize() for part in parts)
 
     @staticmethod
-    def get_temp_filename(filename):
+    def get_temp_filename(filename: PathLike) -> Path:
         filename = Path(filename)
         filename = filename.with_stem(f"{filename.stem}_tmp")
         if filename.exists():
