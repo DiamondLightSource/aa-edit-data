@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import aa_remove_data.remove_data as remove_data
+import aa_remove_data.algorithms as algorithms
 from aa_remove_data.archiver_data import ArchiverData
 from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
 
@@ -12,26 +12,26 @@ def test_get_nano_diff():
     adg = ArchiverDataGenerated(start=10, seconds_gap=1, nano_gap=11, samples=5)
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_nano_diff(samples[i - 1], samples[i]) == 1000000011
+        assert algorithms.get_nano_diff(samples[i - 1], samples[i]) == 1000000011
 
     adg = ArchiverDataGenerated(start=10, seconds_gap=0, nano_gap=294814, samples=5)
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_nano_diff(samples[i - 1], samples[i]) == 294814
+        assert algorithms.get_nano_diff(samples[i - 1], samples[i]) == 294814
 
     adg = ArchiverDataGenerated(
         start=10, seconds_gap=20, nano_gap=999999999, samples=10
     )
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_nano_diff(samples[i - 1], samples[i]) == 20999999999
+        assert algorithms.get_nano_diff(samples[i - 1], samples[i]) == 20999999999
 
 
 def test_get_seconds_diff():
     adg = ArchiverDataGenerated(start=10, seconds_gap=1, nano_gap=11, samples=5)
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_seconds_diff(samples[i - 1], samples[i]) == int(
+        assert algorithms.get_seconds_diff(samples[i - 1], samples[i]) == int(
             1.000000011 * i
         ) - int(1.000000011 * (i - 1))
 
@@ -40,14 +40,14 @@ def test_get_seconds_diff():
     )
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_seconds_diff(samples[i - 1], samples[i]) == int(
+        assert algorithms.get_seconds_diff(samples[i - 1], samples[i]) == int(
             0.294814 * i
         ) - int(0.294814 * (i - 1))
 
     adg = ArchiverDataGenerated(start=10, seconds_gap=20, nano_gap=999999999, samples=5)
     samples = list(adg.get_samples())
     for i in range(1, len(samples)):
-        assert remove_data.get_seconds_diff(samples[i - 1], samples[i]) == int(
+        assert algorithms.get_seconds_diff(samples[i - 1], samples[i]) == int(
             20.999999999 * i
         ) - int(20.999999999 * (i - 1))
 
@@ -55,7 +55,7 @@ def test_get_seconds_diff():
 def test_apply_min_period():
     filepath = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filepath)
-    samples = list(remove_data.apply_min_period(ad.get_samples(), period=1))
+    samples = list(algorithms.apply_min_period(ad.get_samples(), period=1))
     for i in range(len(samples) - 1):
         diff = (
             samples[i + 1].secondsintoyear
@@ -70,7 +70,7 @@ def test_apply_min_period_tiny_period():
     filepath = Path("tests/test_data/RAW:2025_short.pb")
     write_filepath = Path("tests/test_data/RAW:2025_short_test_apply_min_period.pb")
     ad = ArchiverData(filepath)
-    samples = list(remove_data.apply_min_period(ad.get_samples(), period=0.01))
+    samples = list(algorithms.apply_min_period(ad.get_samples(), period=0.01))
     # Shorter period than any time gap in the file so new file should be identical
     for i in range(len(samples) - 1):
         diff = (
@@ -89,13 +89,13 @@ def test_apply_min_period_tiny_period():
 def test_apply_min_period_gives_neg_diff_error():
     adg = ArchiverDataGenerated(start=1000, seconds_gap=-1)
     with pytest.raises(ValueError):
-        list(remove_data.apply_min_period(adg.get_samples(), period=1))
+        list(algorithms.apply_min_period(adg.get_samples(), period=1))
 
 
 def test_remove_before_ts():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_before_ts(ad.get_samples(), 111, nano=650000000))
+    samples = list(algorithms.remove_before_ts(ad.get_samples(), 111, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != list(ad.get_samples())[578:]:
         raise AssertionError(
@@ -109,7 +109,7 @@ def test_remove_before_ts():
 def test_remove_before_ts_greater_than_max():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_before_ts(ad.get_samples(), 200, nano=650000000))
+    samples = list(algorithms.remove_before_ts(ad.get_samples(), 200, nano=650000000))
     if samples != []:
         raise AssertionError(
             "Samples don't match:\n"
@@ -123,7 +123,7 @@ def test_remove_before_ts_greater_than_max():
 def test_remove_before_ts_at_max():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_before_ts(ad.get_samples(), 193, nano=102601528))
+    samples = list(algorithms.remove_before_ts(ad.get_samples(), 193, nano=102601528))
     if samples != [list(ad.get_samples())[-1]]:
         raise AssertionError(
             "Samples don't match:\n"
@@ -139,7 +139,7 @@ def test_remove_before_ts_lesser_than_min():
     filename = Path("tests/test_data/P:2021_short.pb")
     ad = ArchiverData(filename)
     samples = list(
-        remove_data.remove_before_ts(ad.get_samples(), 12743981, nano=650000000)
+        algorithms.remove_before_ts(ad.get_samples(), 12743981, nano=650000000)
     )
     all_samples = list(ad.get_samples())
     if samples != list(ad.get_samples()):
@@ -157,7 +157,7 @@ def test_remove_before_ts_at_min():
     filename = Path("tests/test_data/P:2021_short.pb")
     ad = ArchiverData(filename)
     samples = list(
-        remove_data.remove_before_ts(ad.get_samples(), 12743982, nano=176675494)
+        algorithms.remove_before_ts(ad.get_samples(), 12743982, nano=176675494)
     )
     all_samples = list(ad.get_samples())
     if samples != all_samples:
@@ -178,7 +178,7 @@ def test_remove_before_ts_increasing():
     ):
         ad = ArchiverData(filename)
         samples = list(
-            remove_data.remove_before_ts(ad.get_samples(), seconds, nano=nano)
+            algorithms.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
 
         if seconds * 10**9 + nano > 398 * 10**9:
@@ -201,7 +201,7 @@ def test_remove_before_ts_decreasing():
     ):
         ad = ArchiverData(filename)
         samples = list(
-            remove_data.remove_before_ts(ad.get_samples(), seconds, nano=nano)
+            algorithms.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
 
         if seconds * 10**9 + nano < 200 * 10**9:
@@ -219,7 +219,7 @@ def test_remove_before_ts_decreasing():
 def test_remove_after_ts():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_after_ts(ad.get_samples(), 111, nano=650000000))
+    samples = list(algorithms.remove_after_ts(ad.get_samples(), 111, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != list(ad.get_samples())[:578]:
         raise AssertionError(
@@ -233,7 +233,7 @@ def test_remove_after_ts():
 def test_remove_after_ts_greater_than_max():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_after_ts(ad.get_samples(), 200, nano=650000000))
+    samples = list(algorithms.remove_after_ts(ad.get_samples(), 200, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != all_samples:
         raise AssertionError(
@@ -249,7 +249,7 @@ def test_remove_after_ts_greater_than_max():
 def test_remove_after_ts_at_max():
     filename = Path("tests/test_data/RAW:2025_short.pb")
     ad = ArchiverData(filename)
-    samples = list(remove_data.remove_after_ts(ad.get_samples(), 193, nano=102601528))
+    samples = list(algorithms.remove_after_ts(ad.get_samples(), 193, nano=102601528))
     all_samples = list(ad.get_samples())
     if samples != all_samples:
         raise AssertionError(
@@ -266,7 +266,7 @@ def test_remove_after_ts_lesser_than_min():
     filename = Path("tests/test_data/P:2021_short.pb")
     ad = ArchiverData(filename)
     samples = list(
-        remove_data.remove_after_ts(ad.get_samples(), 12743981, nano=650000000)
+        algorithms.remove_after_ts(ad.get_samples(), 12743981, nano=650000000)
     )
     if samples != []:
         raise AssertionError(
@@ -282,7 +282,7 @@ def test_remove_after_ts_at_min():
     filename = Path("tests/test_data/P:2021_short.pb")
     ad = ArchiverData(filename)
     samples = list(
-        remove_data.remove_after_ts(ad.get_samples(), 12743982, nano=176675494)
+        algorithms.remove_after_ts(ad.get_samples(), 12743982, nano=176675494)
     )
     if samples == []:
         raise AssertionError(
@@ -306,9 +306,7 @@ def test_remove_after_ts_increasing():
     for seconds, nano in zip(
         range(210, 420, 2), range(0, 20 * 10**9, 60000000), strict=False
     ):
-        samples = list(
-            remove_data.remove_after_ts(ad.get_samples(), seconds, nano=nano)
-        )
+        samples = list(algorithms.remove_after_ts(ad.get_samples(), seconds, nano=nano))
 
         if seconds * 10**9 + nano >= 398 * 10**9:
             assert samples == list(ad.get_samples())
@@ -328,9 +326,7 @@ def test_remove_after_ts_decreasing():
     for seconds, nano in zip(
         range(390, 180, -2), range(0, -(20 * 10**9), -60000000), strict=False
     ):
-        samples = list(
-            remove_data.remove_after_ts(ad.get_samples(), seconds, nano=nano)
-        )
+        samples = list(algorithms.remove_after_ts(ad.get_samples(), seconds, nano=nano))
 
         if seconds * 10**9 + nano < 200 * 10**9:
             assert samples == []
@@ -348,21 +344,21 @@ def test_reduce_by_factor():
     samples = range(100)
     for n in range(1, 51):
         expected = list(range(0, 100, n))
-        actual = list(remove_data.reduce_by_factor(iter(samples), n))
+        actual = list(algorithms.reduce_by_factor(iter(samples), n))
         assert actual == expected
 
 
 def test_reduce_by_factor_n_too_big():
     samples = range(100)
     n = 2000
-    actual = list(remove_data.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.reduce_by_factor(iter(samples), n))
     assert actual == [list(samples)[0]]
 
 
 def test_reduce_by_factor_n_is_1():
     samples = range(100)
     n = 1
-    actual = list(remove_data.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.reduce_by_factor(iter(samples), n))
     assert actual == list(samples)
 
 
@@ -370,18 +366,18 @@ def test_reduce_by_factor_n_is_0():
     samples = iter(range(100))
     n = 0
     with pytest.raises(ZeroDivisionError):
-        list(remove_data.reduce_by_factor(samples, n))
+        list(algorithms.reduce_by_factor(samples, n))
 
 
 def test_reduce_by_factor_n_is_neg():
     samples = range(100)
     n = -5
     with pytest.raises(ValueError):
-        list(remove_data.reduce_by_factor(iter(samples), n))
+        list(algorithms.reduce_by_factor(iter(samples), n))
 
 
 def test_reduce_by_factor_n_is_len():
     samples = range(100)
     n = len(list(samples))
-    actual = list(remove_data.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.reduce_by_factor(iter(samples), n))
     assert actual == [list(samples)[0]]
