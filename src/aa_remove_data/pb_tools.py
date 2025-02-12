@@ -8,9 +8,15 @@ from aa_remove_data.remove_data import validate_pb_file
 
 app = typer.Typer()
 
+FILENAME_ARGUMENT = typer.Argument(help="path/to/file.pb of PB file.")
+TXT_FILENAME_ARGUMENT = typer.Argument(None)
+
 
 @app.command()
-def pb_2_txt(filename: Path, txt_filename: Path | None = None):
+def pb_2_txt(
+    filename: Path = FILENAME_ARGUMENT,
+    txt_filename: Path | None = TXT_FILENAME_ARGUMENT,
+):
     """Convert a .pb file to a human-readable .txt file."""
     txt_file = txt_filename if txt_filename else filename.with_suffix(".txt")
     print(f"Writing {txt_file}")
@@ -22,7 +28,7 @@ def pb_2_txt(filename: Path, txt_filename: Path | None = None):
 
 
 @app.command()
-def print_header(filename: Path, lines: int = 0, start: int = 0):
+def print_header(filename: Path = FILENAME_ARGUMENT, lines: int = 0, start: int = 0):
     """Print the header and first few lines of a .pb file."""
     # Validation
     validate_pb_file(filename, should_exist=True)
