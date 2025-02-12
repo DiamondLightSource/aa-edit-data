@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from aa_remove_data.archiver_data import ArchiverData
 from aa_remove_data.generated import EPICSEvent_pb2
 
@@ -21,6 +23,7 @@ class ArchiverDataGenerated(ArchiverData):
         self.start = start
         self.seconds_gap = seconds_gap
         self.nano_gap = nano_gap
+        self.filepath = Path("dummy")
 
     def get_samples(self):
         """Read a PB file that is structured in the Archiver Appliance format.

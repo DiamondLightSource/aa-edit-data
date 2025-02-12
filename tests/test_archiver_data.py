@@ -1,4 +1,5 @@
 import filecmp
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -14,12 +15,15 @@ class ArchiverDataDummy(ArchiverData):
         self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
         self.samples = samples if samples else []
         self.pv_type = ""
+        self.filepath = "dummy"
 
-    def get_samples(self, deserialize=True):
+    def get_samples(self):
         yield from (
-            self.deserialize(sample, self.get_proto_class()) if deserialize else sample
-            for sample in self.samples
+            self.deserialize(sample, self.get_proto_class()) for sample in self.samples
         )
+
+    def get_samples_bytes(self):
+        yield from (self.samples)
 
 
 def test_replace_newline_chars_escape_character():
@@ -271,6 +275,25 @@ def test_generate_test_samples_all_types():
         assert adg.samples
 
 
+def test_get_samples():
+    filename = Path("tests/test_data/SCALAR_INT_test_data.pb")
+    ad = ArchiverData(filename)
+    for i, sample in enumerate(ad.get_samples()):
+        assert sample.val == i
+        assert sample.secondsintoyear == 1000 + 2 * i
+
+
+def test_get_samples_bytes():
+    filename = Path("tests/test_data/SCALAR_INT_test_data.pb")
+    ad = ArchiverData(filename)
+    samples = list(ad.get_samples_bytes())
+    with open(filename, "rb") as f:
+        expected_samples = list(f.readlines())[1:]
+    assert len(samples) == len(expected_samples)
+    for i in range(len(samples)):
+        assert samples[i] == expected_samples[i]
+
+
 def test_write_txt():
     samples_b = [
         b"\x08\x80\xa0\xc0\x0e\x10\x00\x19\x00\x00\x00\x00\x00\x00\x00\x00",
@@ -284,13 +307,38 @@ def test_write_txt():
     ad.header.ParseFromString(b"\x08\x06\x12\x04test\x18\xe8\x0f")
     ad.pv_type = ad.get_pv_type()
 
-    expected = Path("tests/expected_write_to.txt")
-    result = Path("tests/result_write_to.txt")
-    ad.write_txt(Path("tests/result_write_to.txt"))
+    expected = Path("tests/test_data/archiver_data_expected_output/write_to.txt")
+    result = Path("tests/test_data/results_files/write_to.txt")
+    ad.write_txt(result)
     are_identical = filecmp.cmp(expected, result, shallow=False)
     if are_identical is True:
         result.unlink()  # Delete results file if test passes
     assert are_identical is True
+
+
+def test_process_and_write():
+    ad = ArchiverDataGenerated(
+        samples=10, pv_type=4, start=25, seconds_gap=1, nano_gap=500000000
+    )
+    filepath = Path("tests/test_data/results_files/process_and_write.pb")
+    expected = Path(
+        "tests/test_data/archiver_data_expected_output/process_and_write.pb"
+    )
+
+    def process_function(samples: Iterator) -> Iterator:
+        return (sample for i, sample in enumerate(samples) if i % 2)
+
+    ad.process_and_write(filepath, True, process_function)
+    are_identical = filecmp.cmp(filepath, expected, shallow=False)
+    if are_identical is True:
+        filepath.unlink()  # Delete results file if test passes
+    assert are_identical is True
+    are_txt_identical = filecmp.cmp(
+        filepath.with_suffix(".txt"), expected.with_suffix(".txt")
+    )
+    if are_txt_identical is True:
+        filepath.with_suffix(".txt").unlink()
+    assert are_txt_identical is True
 
 
 def test_read_write_pb():
