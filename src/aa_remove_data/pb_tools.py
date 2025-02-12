@@ -9,7 +9,7 @@ from aa_remove_data.remove_data import validate_pb_file
 app = typer.Typer()
 
 FILENAME_ARGUMENT = typer.Argument(help="path/to/file.pb of PB file.")
-TXT_FILENAME_ARGUMENT = typer.Argument(None)
+TXT_FILENAME_ARGUMENT = typer.Argument(None, help="path/to/file.txt of text file.")
 
 
 @app.command()
@@ -17,7 +17,7 @@ def pb_2_txt(
     filename: Path = FILENAME_ARGUMENT,
     txt_filename: Path | None = TXT_FILENAME_ARGUMENT,
 ):
-    """Convert a .pb file to a human-readable .txt file."""
+    """Convert a PB file to a human-readable text file."""
     txt_file = txt_filename if txt_filename else filename.with_suffix(".txt")
     print(f"Writing {txt_file}")
     # Validation
@@ -29,7 +29,7 @@ def pb_2_txt(
 
 @app.command()
 def print_header(filename: Path = FILENAME_ARGUMENT, lines: int = 0, start: int = 0):
-    """Print the header and first few lines of a .pb file."""
+    """Print the header and a few lines of a PB file."""
     # Validation
     validate_pb_file(filename, should_exist=True)
     ad = ArchiverData(filename)

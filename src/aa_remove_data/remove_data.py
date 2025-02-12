@@ -43,13 +43,12 @@ def to_period(
 @app.command()
 def by_factor(
     filename: Path = FILENAME_ARGUMENT,
-    factor: float = typer.Argument(help="Minimum period between each data point"),
+    factor: float = typer.Argument(help="Factor to reduce the data by"),
     new_filename: Path | None = NEW_FILENAME_OPTION,
     backup_filename: Path | None = BACKUP_FILENAME_OPTION,
     write_txt: bool = WRITE_TXT_OPTION,
 ):
-    """Reduce the number of data points in a PB file by a certain factor by removing all
-    but every nth."""
+    """Reduce the number of data points in a PB file by a certain factor."""
     f, new_f, backup_f = process_filenames(filename, new_filename, backup_filename)
     if backup_f is not None:
         subprocess.run(["cp", f, backup_f], check=True)
@@ -63,7 +62,9 @@ def by_factor(
 @app.command()
 def remove_before(
     filename: Path = FILENAME_ARGUMENT,
-    timestamp: str = typer.Argument(help="Minimum period between each data point"),
+    timestamp: str = typer.Argument(
+        help="{month,day,hour,minute,second,nanosecond}. Month is required"
+    ),
     new_filename: Path | None = NEW_FILENAME_OPTION,
     backup_filename: Path | None = BACKUP_FILENAME_OPTION,
     write_txt: bool = WRITE_TXT_OPTION,
@@ -81,7 +82,9 @@ def remove_before(
 @app.command()
 def remove_after(
     filename: Path = FILENAME_ARGUMENT,
-    timestamp: str = typer.Argument(help="Minimum period between each data point"),
+    timestamp: str = typer.Argument(
+        help="{month,day,hour,minute,second,nanosecond}. Month is required"
+    ),
     new_filename: Path | None = NEW_FILENAME_OPTION,
     backup_filename: Path | None = BACKUP_FILENAME_OPTION,
     write_txt: bool = WRITE_TXT_OPTION,
@@ -96,7 +99,17 @@ def remove_after(
     ad.process_and_write(new_f, write_txt, remove_after_ts, [seconds, nano])
 
 
-def validate_pb_file(filepath, should_exist=False):
+def validate_pb_file(filepath: Path, should_exist: bool = False):
+    """Validate a file ensuring it has a .pb extension and, optionally, exists.
+
+    Args:
+        filepath (Path): Filepath being validated.
+        should_exist (bool, optional): Requires file to exist. Defaults to False.
+
+    Raises:
+        ValueError: Raised if the filepath does not have a .pb extension.
+        FileNotFoundError: Raised if the file should exist, and doesn't.
+    """
     filepath = Path(filepath)
     if filepath.suffix != ".pb":
         raise ValueError(
@@ -107,7 +120,24 @@ def validate_pb_file(filepath, should_exist=False):
         raise FileNotFoundError(f"No such file: '{filepath}'")
 
 
-def process_filenames(f: Path, new_f: Path | None, backup_f: Path | None):
+def process_filenames(
+    f: Path, new_f: Path | None, backup_f: Path | None
+) -> tuple[Path, Path, Path | None]:
+    """Process and validate filename, new filename and backup filenames provided by the
+    user.
+
+    Args:
+        f (Path): Path to PB file beign processed.
+        new_f (Path | None): Destination path for processed PB file.
+        backup_f (Path | None): Path to backup file, a copy of the original PB file.
+
+    Raises:
+        ValueError: Raised if backup filename is the same as any of the others.
+
+    Returns:
+        tuple[Path, Path, Path | None]: Tuple containing valid filenames for the
+        original, new and backup PB files.
+    """
     validate_pb_file(f, should_exist=True)
 
     if backup_f is None and (new_f in (None, f)):
@@ -126,7 +156,22 @@ def process_filenames(f: Path, new_f: Path | None, backup_f: Path | None):
     return f, new_f, backup_f
 
 
-def process_timestamp(year: int, timestamp: str):
+def process_timestamp(year: int, timestamp: str) -> tuple[int, int]:
+    """Convert a timestamp entered by a user into a number of seconds into the year and
+    nanoseconds.
+
+    Args:
+        year (int): Year of the timestamp
+        timestamp (str): String containing the month, day, hour, minute, second,
+        nanosecond of the timestamp, seperated by commas.
+
+    Raises:
+        ValueError: Raised if the user entered too many values for the timestamp.
+
+    Returns:
+        tuple[int, int]: Tuple containing seconds and nanoseconds that capture the
+        timestamp.
+    """
     ts = [1, 1, 0, 0, 0, 0]
     for i, value in enumerate(timestamp.split(",")):
         ts[i] = int(value)
