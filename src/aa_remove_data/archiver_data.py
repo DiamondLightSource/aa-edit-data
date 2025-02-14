@@ -244,17 +244,30 @@ class ArchiverData:
 
     def _get_proto_class_name(self) -> str:
         """Convert the name of a pv type to match the proto class name. This
-        involves coverting to CamelCase and replacing 'WAVEFORM' with 'Vector'.
-        The full mapping is described in
+        mapping is described in
         epicsarchiverap/src/main/edu/stanford/slac/archiverappliance/PB/data/DBR2PBTypeMapping.java
 
         Returns:
             str: Name of proto class, e.g VectorDouble.
         """
-        # Split the enum name by underscores and capitalize each part
-        parts = self.pv_type.split("_")
-        parts = [x.replace("WAVEFORM", "Vector") for x in parts]
-        return "".join(part.capitalize() for part in parts)
+        pv_type_to_class_name = {
+            "SCALAR_STRING": "ScalarString",
+            "SCALAR_SHORT": "ScalarShort",
+            "SCALAR_FLOAT": "ScalarFloat",
+            "SCALAR_ENUM": "ScalarEnum",
+            "SCALAR_BYTE": "ScalarByte",
+            "SCALAR_INT": "ScalarInt",
+            "SCALAR_DOUBLE": "ScalarDouble",
+            "WAVEFORM_STRING": "VectorString",
+            "WAVEFORM_SHORT": "VectorShort",
+            "WAVEFORM_FLOAT": "VectorFloat",
+            "WAVEFORM_ENUM": "VectorEnum",
+            "WAVEFORM_BYTE": "VectorByte",
+            "WAVEFORM_INT": "VectorInt",
+            "WAVEFORM_DOUBLE": "VectorDouble",
+            "V4_GENERIC_BYTES": "V4GenericBytes",
+        }
+        return pv_type_to_class_name[self.pv_type]
 
     @staticmethod
     def get_temp_filename(filename: PathLike) -> Path:
