@@ -19,7 +19,7 @@ class ArchiverDataDummy(ArchiverData):
 
     def get_samples(self):
         yield from (
-            self.deserialize(sample, self.get_proto_class()) for sample in self.samples
+            self.deserialize(sample, self._get_proto_class()) for sample in self.samples
         )
 
     def get_samples_bytes(self):
@@ -169,7 +169,7 @@ def test_get_pv_type():
     ad = ArchiverDataGenerated()
     for expected_pv_type, num in pv_type_enum.items():
         ad.header.type = num
-        result = ad.get_pv_type()
+        result = ad._get_pv_type()
         assert result == expected_pv_type
 
 
@@ -220,8 +220,8 @@ def test_get_proto_class():
     for pv_type_num, expected_class in pv_type_num_to_proto_class.items():
         ad = ArchiverDataDummy()
         ad.header.type = pv_type_num
-        ad.pv_type = ad.get_pv_type()
-        result = ad.get_proto_class()
+        ad.pv_type = ad._get_pv_type()
+        result = ad._get_proto_class()
         assert result == expected_class
 
 
@@ -305,7 +305,7 @@ def test_write_txt():
 
     ad = ArchiverDataDummy(samples_b)
     ad.header.ParseFromString(b"\x08\x06\x12\x04test\x18\xe8\x0f")
-    ad.pv_type = ad.get_pv_type()
+    ad.pv_type = ad._get_pv_type()
 
     expected = Path("tests/test_data/archiver_data_expected_output/write_to.txt")
     result = Path("tests/test_data/results_files/write_to.txt")

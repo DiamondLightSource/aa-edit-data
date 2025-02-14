@@ -25,7 +25,8 @@ class ArchiverData:
         self.filepath = Path(filepath)
         with open(filepath, "rb") as f:
             self.header = self.deserialize(f.readline(), EPICSEvent_pb2.PayloadInfo)  # type: ignore
-        self.pv_type = self.get_pv_type()
+        self.pv_type = self._get_pv_type()
+        self.proto_class = self._get_proto_class()
 
     def get_samples(self) -> Generator:
         """Read a PB file that is structured in the Archiver Appliance format.
@@ -35,10 +36,9 @@ class ArchiverData:
         Args:
             filepath (PathLike): Path to PB file.
         """
-        proto_class = self.get_proto_class()
         with open(self.filepath, "rb") as f:
             for line in islice(f, 1, None):
-                yield self.deserialize(line, proto_class)
+                yield self.deserialize(line, self.proto_class)
 
     def get_samples_bytes(self) -> Generator:
         """Read a PB file that is structured in the Archiver Appliance format.
@@ -91,6 +91,7 @@ class ArchiverData:
         else:
             self.write_pb(filepath, samples=samples, raw=raw)
         if mv_to:
+            print(f"Moving {filepath} to {mv_to}")
             subprocess.run(["mv", filepath, mv_to], check=True)
 
     def write_pb_and_txt(
@@ -109,11 +110,12 @@ class ArchiverData:
             f_txt.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
             f_txt.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
             if raw:
-                proto_class = self.get_proto_class()
                 for sample in tqdm(samples, mininterval=0.1):
                     f_pb.write(sample)
                     f_txt.write(
-                        self.format_datastr(self.deserialize(sample, proto_class), year)
+                        self.format_datastr(
+                            self.deserialize(sample, self.proto_class), year
+                        )
                     )
             else:
                 for sample in tqdm(samples, mininterval=0.1):
@@ -218,7 +220,7 @@ class ArchiverData:
             f"    {sample.val}\n"
         )
 
-    def get_pv_type(self) -> str:
+    def _get_pv_type(self) -> str:
         """Get the name of a PB file's pv type using information in its
         header.
 
@@ -229,7 +231,7 @@ class ArchiverData:
         enum_descriptor = type_descriptor.enum_type
         return enum_descriptor.values_by_number[self.header.type].name
 
-    def get_proto_class(self) -> Callable:
+    def _get_proto_class(self) -> Callable:
         """Get the EPICSEvent_pb2 class corresponding to the pv in a PB file.
         Instances of this class can interpret PB messages of a matching type.
 

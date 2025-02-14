@@ -18,7 +18,8 @@ class ArchiverDataGenerated(ArchiverData):
         self.header.pvname = "generated_test_data"
         self.header.year = year
         self.header.type = pv_type
-        self.pv_type = self.get_pv_type()
+        self.pv_type = self._get_pv_type()
+        self.proto_class = self._get_proto_class()
         self.samples = samples
         self.start = start
         self.seconds_gap = seconds_gap
@@ -33,11 +34,10 @@ class ArchiverDataGenerated(ArchiverData):
         Args:
             filepath (PathLike): Path to PB file.
         """
-        proto_class = self.get_proto_class()
         time_gap = self.seconds_gap * 10**9 + self.nano_gap
         time = self.start * 10**9
         for i in range(self.samples):
-            sample = proto_class()
+            sample = self.proto_class()
             sample.secondsintoyear = time // 10**9
             sample.nano = time % 10**9
             if self.pv_type.startswith("WAVEFORM"):
