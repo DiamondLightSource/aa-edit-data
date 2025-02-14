@@ -54,9 +54,7 @@ def by_factor(
         subprocess.run(["cp", f, backup_f], check=True)
 
     ad = ArchiverData(f)
-    ad.process_and_write(
-        new_f, write_txt, reduce_by_factor, [factor], deserialize=False
-    )
+    ad.process_and_write(new_f, write_txt, reduce_by_factor, [factor], raw=True)
 
 
 @app.command()

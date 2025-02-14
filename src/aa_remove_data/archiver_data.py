@@ -6,6 +6,8 @@ from os import PathLike
 from pathlib import Path
 from typing import Any
 
+from tqdm import tqdm
+
 from aa_remove_data.generated import EPICSEvent_pb2
 
 
@@ -54,21 +56,12 @@ class ArchiverData:
         process_func: Callable,
         process_args: list | None = None,
         process_kwargs: dict | None = None,
-        deserialize: bool = True,
-        serialize: bool = True,
+        raw: bool = False,
     ):
         process_args = process_args or []
         process_kwargs = process_kwargs or {}
-        if deserialize:
-            for sample in process_func(
-                self.get_samples(), *process_args, **process_kwargs
-            ):
-                yield self.serialize(sample) if serialize else sample
-        else:
-            for sample in process_func(
-                self.get_samples_bytes(), *process_args, **process_kwargs
-            ):
-                yield sample
+        samples = self.get_samples_bytes() if raw else self.get_samples()
+        yield from process_func(samples, *process_args, **process_kwargs)
 
     def process_and_write(
         self,
@@ -77,7 +70,7 @@ class ArchiverData:
         process_func: Callable,
         process_args: list | None = None,
         process_kwargs: dict | None = None,
-        deserialize: bool = True,
+        raw: bool = False,
     ):
         filepath = Path(filepath)
         txt_filepath = filepath.with_suffix(".txt")
@@ -91,29 +84,57 @@ class ArchiverData:
             process_func,
             process_args=process_args,
             process_kwargs=process_kwargs,
-            deserialize=deserialize,
-            serialize=True,
+            raw=raw,
         )
-        self.write_pb(filepath, samples=samples)
+        if write_txt:
+            self.write_pb_and_txt(filepath, txt_filepath, samples, raw=raw)
+        else:
+            self.write_pb(filepath, samples=samples, raw=raw)
         if mv_to:
             subprocess.run(["mv", filepath, mv_to], check=True)
-        if write_txt:
-            txt_samples = self.get_processed_samples(
-                process_func,
-                process_args=process_args,
-                process_kwargs=process_kwargs,
-                deserialize=True,
-                serialize=False,
-            )
-            self.write_txt(txt_filepath, samples=txt_samples)
 
-    def write_pb(self, filepath: PathLike, samples: Iterator | None = None):
+    def write_pb_and_txt(
+        self,
+        pb_filepath: PathLike,
+        txt_filepath: PathLike,
+        samples: Iterator,
+        raw=False,
+    ):
+        print(f"Writing {pb_filepath}")
+        print(f"Writing {txt_filepath}")
+        year = self.header.year
+        with open(pb_filepath, "wb") as f_pb, open(txt_filepath, "w") as f_txt:
+            # Write header
+            f_pb.write(self.serialize(self.header))
+            f_txt.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
+            f_txt.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
+            if raw:
+                proto_class = self.get_proto_class()
+                for sample in tqdm(samples, mininterval=0.1):
+                    f_pb.write(sample)
+                    f_txt.write(
+                        self.format_datastr(self.deserialize(sample, proto_class), year)
+                    )
+            else:
+                for sample in tqdm(samples, mininterval=0.1):
+                    f_pb.write(self.serialize(sample))
+                    f_txt.write(self.format_datastr(sample, year))
+
+    def write_pb(self, filepath: PathLike, samples: Iterator | None = None, raw=True):
+        print(f"Writing {filepath}")
         samples = samples or self.get_samples_bytes()
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
-            f.writelines(sample for sample in samples)
+            f.writelines(
+                tqdm(samples, mininterval=0.1)
+                if raw
+                else (
+                    self.serialize(sample) for sample in tqdm(samples, mininterval=0.1)
+                )
+            )
 
     def write_txt(self, filepath: PathLike, samples: Iterator | None = None):
+        print(f"Writing {filepath}")
         samples = samples or self.get_samples()
         with open(filepath, "w") as f:
             # Write header

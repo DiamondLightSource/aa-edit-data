@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from itertools import chain
 from typing import Any
 
 
@@ -65,7 +66,10 @@ def remove_before_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator
     if nano >= 10**9 or nano < 0:
         seconds += nano // (10**9)
         nano = nano % (10**9)
-    return (sample for sample in samples if not is_before(sample, seconds, nano))
+    for sample in samples:
+        if not is_before(sample, seconds, nano):
+            return chain([sample], samples)
+    return iter([])
 
 
 def remove_after_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator:
@@ -82,7 +86,11 @@ def remove_after_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator:
     if nano >= 10**9 or nano < 0:
         seconds += nano // (10**9)
         nano = nano % (10**9)
-    return (sample for sample in samples if not is_after(sample, seconds, nano))
+    for sample in samples:
+        if not is_after(sample, seconds, nano):
+            yield sample
+        else:
+            break
 
 
 def get_nano_diff(sample1: Any, sample2: Any) -> int:
@@ -134,9 +142,9 @@ def is_before(sample: Any, seconds: int, nano: int) -> bool:
     Returns:
         bool: True if before, otherwise False
     """
-    if sample.secondsintoyear < seconds or (
-        sample.secondsintoyear == seconds and sample.nano < nano
-    ):
+    if sample.secondsintoyear < seconds:
+        return True
+    elif sample.secondsintoyear == seconds and sample.nano < nano:
         return True
     else:
         return False
@@ -153,9 +161,9 @@ def is_after(sample: Any, seconds: int, nano: int) -> bool:
     Returns:
         bool: True if after, otherwise False
     """
-    if sample.secondsintoyear > seconds or (
-        sample.secondsintoyear == seconds and sample.nano > nano
-    ):
+    if sample.secondsintoyear > seconds:
+        return True
+    elif sample.secondsintoyear == seconds and sample.nano > nano:
         return True
     else:
         return False

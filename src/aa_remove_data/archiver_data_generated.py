@@ -49,6 +49,10 @@ class ArchiverDataGenerated(ArchiverData):
             time += time_gap
             yield sample
 
+    def get_samples_bytes(self):
+        for sample in self.get_samples():
+            yield self.serialize(sample)
+
     def generate_test_value(self, val: int) -> str | bytes | int:
         """Generate an appropriate value for a sample based on it's pv type.
 
