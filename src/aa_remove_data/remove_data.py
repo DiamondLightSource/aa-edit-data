@@ -12,6 +12,13 @@ from aa_remove_data.algorithms import (
 )
 from aa_remove_data.archiver_data import ArchiverData
 
+
+def validate_positive(value: float):
+    if value <= 0:
+        raise typer.BadParameter("Period must be strictly greater than 0")
+    return value
+
+
 app = typer.Typer()
 
 FILENAME_ARGUMENT = typer.Argument(help="path/to/file.pb of PB file being processed")
@@ -25,7 +32,9 @@ WRITE_TXT_OPTION = typer.Option(
 @app.command()
 def to_period(
     filename: Path = FILENAME_ARGUMENT,
-    period: float = typer.Argument(help="Minimum period between each data point"),
+    period: float = typer.Argument(
+        help="Minimum period between each data point", callback=validate_positive
+    ),
     new_filename: Path | None = NEW_FILENAME_OPTION,
     backup_filename: Path | None = BACKUP_FILENAME_OPTION,
     write_txt: bool = WRITE_TXT_OPTION,
@@ -43,7 +52,7 @@ def to_period(
 @app.command()
 def by_factor(
     filename: Path = FILENAME_ARGUMENT,
-    factor: float = typer.Argument(help="Factor to reduce the data by"),
+    factor: int = typer.Argument(help="Factor to reduce the data by", min=1),
     new_filename: Path | None = NEW_FILENAME_OPTION,
     backup_filename: Path | None = BACKUP_FILENAME_OPTION,
     write_txt: bool = WRITE_TXT_OPTION,

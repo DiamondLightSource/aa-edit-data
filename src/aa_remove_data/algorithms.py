@@ -37,7 +37,7 @@ def apply_min_period(samples: Iterator, period: float) -> Iterator:
             yield sample
 
 
-def reduce_by_factor(samples: Iterator, factor) -> Iterator:
+def reduce_by_factor(samples: Iterator, factor: int) -> Iterator:
     """Reduce the number of samples by a certain factor.
 
     Args:

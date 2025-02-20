@@ -91,7 +91,6 @@ class ArchiverData:
         else:
             self.write_pb(filepath, samples=samples, raw=raw)
         if mv_to:
-            print(f"Moving {filepath} to {mv_to}")
             subprocess.run(["mv", filepath, mv_to], check=True)
 
     def write_pb_and_txt(
@@ -101,8 +100,6 @@ class ArchiverData:
         samples: Iterator,
         raw=False,
     ):
-        print(f"Writing {pb_filepath}")
-        print(f"Writing {txt_filepath}")
         year = self.header.year
         with open(pb_filepath, "wb") as f_pb, open(txt_filepath, "w") as f_txt:
             # Write header
@@ -123,7 +120,6 @@ class ArchiverData:
                     f_txt.write(self.format_datastr(sample, year))
 
     def write_pb(self, filepath: PathLike, samples: Iterator | None = None, raw=True):
-        print(f"Writing {filepath}")
         samples = samples or self.get_samples_bytes()
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
@@ -136,7 +132,6 @@ class ArchiverData:
             )
 
     def write_txt(self, filepath: PathLike, samples: Iterator | None = None):
-        print(f"Writing {filepath}")
         samples = samples or self.get_samples()
         with open(filepath, "w") as f:
             # Write header
