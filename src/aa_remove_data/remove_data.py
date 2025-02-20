@@ -4,6 +4,7 @@ from pathlib import Path
 
 import typer
 
+from aa_remove_data._version import __version__
 from aa_remove_data.algorithms import (
     apply_min_period,
     reduce_by_factor,
@@ -27,6 +28,15 @@ BACKUP_FILENAME_OPTION = typer.Option(None, help="path/to/file.pb of a backup fi
 WRITE_TXT_OPTION = typer.Option(
     False, "--write-txt", "-t", help="Write result to text file"
 )
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    version: bool = typer.Option(False, "--version", help="Show version and exit"),
+):
+    if version:
+        typer.echo(f"Version: {__version__}")
+        raise typer.Exit()
 
 
 @app.command()

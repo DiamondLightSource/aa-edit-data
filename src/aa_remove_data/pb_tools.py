@@ -3,6 +3,7 @@ from pathlib import Path
 
 import typer
 
+from aa_remove_data._version import __version__
 from aa_remove_data.archiver_data import ArchiverData
 from aa_remove_data.remove_data import validate_pb_file
 
@@ -10,6 +11,15 @@ app = typer.Typer()
 
 FILENAME_ARGUMENT = typer.Argument(help="path/to/file.pb of PB file.")
 TXT_FILENAME_ARGUMENT = typer.Argument(None, help="path/to/file.txt of text file.")
+
+
+@app.callback(invoke_without_command=True)
+def main(
+    version: bool = typer.Option(False, "--version", help="Show version and exit"),
+):
+    if version:
+        typer.echo(f"Version: {__version__}")
+        raise typer.Exit()
 
 
 @app.command()
