@@ -38,6 +38,21 @@ def pb_2_txt(
 
 
 @app.command()
+def pb_2_csv(
+    filename: Path = FILENAME_ARGUMENT,
+    csv_filename: Path | None = TXT_FILENAME_ARGUMENT,
+):
+    """Convert a PB file to a csv file."""
+    csv_file = csv_filename if csv_filename else filename.with_suffix(".csv")
+    print(f"Writing {csv_file}")
+    # Validation
+    validate_pb_file(filename, should_exist=True)
+    ad = ArchiverData(filename)
+    ad.write_csv(csv_file)
+    print("Write completed!")
+
+
+@app.command()
 def print_header(filename: Path = FILENAME_ARGUMENT, lines: int = 0, start: int = 0):
     """Print the header and a few lines of a PB file."""
     # Validation

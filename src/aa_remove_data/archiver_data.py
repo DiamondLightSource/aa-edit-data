@@ -1,3 +1,4 @@
+import csv
 import subprocess
 from collections.abc import Callable, Generator, Iterator
 from datetime import datetime, timedelta
@@ -143,6 +144,13 @@ class ArchiverData:
                 self.format_datastr(sample, self.header.year) for sample in samples
             )
 
+    def write_csv(self, filepath: PathLike, samples: Iterator | None = None):
+        samples = samples or self.get_samples()
+        with open(filepath, "w") as f:
+            writer = csv.writer(f)
+            for sample in samples:
+                writer.writerow(self.format_csv_row(sample, self.header.year))
+
     @staticmethod
     def serialize(sample: Any) -> bytes:
         return ArchiverData._replace_newline_chars(sample.SerializeToString()) + b"\n"
@@ -214,6 +222,11 @@ class ArchiverData:
             f"{date}    {sample.secondsintoyear:8d}    {sample.nano:9d}"
             f"    {sample.val}\n"
         )
+
+    @staticmethod
+    def format_csv_row(sample: Any, year: int) -> list:
+        date = ArchiverData.convert_to_datetime(year, sample.secondsintoyear)
+        return [date, sample.val]
 
     def _get_pv_type(self) -> str:
         """Get the name of a PB file's pv type using information in its
