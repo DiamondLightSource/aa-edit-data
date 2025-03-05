@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 
 import aa_remove_data.algorithms as algorithms
-from aa_remove_data.archiver_data import ArchiverData
 from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
 
 
@@ -52,9 +51,8 @@ def test_get_seconds_diff():
         ) - int(20.999999999 * (i - 1))
 
 
-def test_apply_min_period():
-    filepath = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filepath)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_apply_min_period(ad):
     samples = list(algorithms.apply_min_period(ad.get_samples(), period=1))
     for i in range(len(samples) - 1):
         diff = (
@@ -66,10 +64,9 @@ def test_apply_min_period():
         assert diff >= 1
 
 
-def test_apply_min_period_tiny_period():
-    filepath = Path("tests/test_data/RAW:2025_short.pb")
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_apply_min_period_tiny_period(ad):
     write_filepath = Path("tests/test_data/RAW:2025_short_test_apply_min_period.pb")
-    ad = ArchiverData(filepath)
     samples = list(algorithms.apply_min_period(ad.get_samples(), period=0.01))
     # Shorter period than any time gap in the file so new file should be identical
     for i in range(len(samples) - 1):
@@ -81,7 +78,9 @@ def test_apply_min_period_tiny_period():
         )
         assert diff >= 0.01
     ad.write_pb(write_filepath)
-    are_identical = filecmp.cmp(filepath, write_filepath, shallow=False)
+    are_identical = filecmp.cmp(
+        "tests/test_data/RAW:2025_short.pb", write_filepath, shallow=False
+    )
     assert are_identical is True
     write_filepath.unlink()  # Delete results file if test passes
 
@@ -92,9 +91,8 @@ def test_apply_min_period_gives_neg_diff_error():
         list(algorithms.apply_min_period(adg.get_samples(), period=1))
 
 
-def test_remove_before_ts():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_before_ts(ad):
     samples = list(algorithms.remove_before_ts(ad.get_samples(), 111, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != list(ad.get_samples())[578:]:
@@ -106,9 +104,8 @@ def test_remove_before_ts():
         )
 
 
-def test_remove_before_ts_greater_than_max():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_before_ts_greater_than_max(ad):
     samples = list(algorithms.remove_before_ts(ad.get_samples(), 200, nano=650000000))
     if samples != []:
         raise AssertionError(
@@ -120,9 +117,8 @@ def test_remove_before_ts_greater_than_max():
         )
 
 
-def test_remove_before_ts_at_max():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_before_ts_at_max(ad):
     samples = list(algorithms.remove_before_ts(ad.get_samples(), 193, nano=102601528))
     if samples != [list(ad.get_samples())[-1]]:
         raise AssertionError(
@@ -135,9 +131,8 @@ def test_remove_before_ts_at_max():
         )
 
 
-def test_remove_before_ts_lesser_than_min():
-    filename = Path("tests/test_data/P:2021_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/P:2021_short.pb"])
+def test_remove_before_ts_lesser_than_min(ad):
     samples = list(
         algorithms.remove_before_ts(ad.get_samples(), 12743981, nano=650000000)
     )
@@ -153,9 +148,8 @@ def test_remove_before_ts_lesser_than_min():
         )
 
 
-def test_remove_before_ts_at_min():
-    filename = Path("tests/test_data/P:2021_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/P:2021_short.pb"])
+def test_remove_before_ts_at_min(ad):
     samples = list(
         algorithms.remove_before_ts(ad.get_samples(), 12743982, nano=176675494)
     )
@@ -171,12 +165,11 @@ def test_remove_before_ts_at_min():
         )
 
 
-def test_remove_before_ts_increasing():
-    filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_SHORT_test_data.pb"])
+def test_remove_before_ts_increasing(ad):
     for seconds, nano in zip(
         range(210, 420, 2), range(0, 20 * 10**9, 60000000), strict=False
     ):
-        ad = ArchiverData(filename)
         samples = list(
             algorithms.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
@@ -193,13 +186,11 @@ def test_remove_before_ts_increasing():
                 assert actual_lowest_nanoseconds == seconds * 10**9
 
 
-def test_remove_before_ts_decreasing():
-    filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_SHORT_test_data.pb"])
+def test_remove_before_ts_decreasing(ad):
     for seconds, nano in zip(
         range(390, 180, -2), range(0, -(20 * 10**9), -60000000), strict=False
     ):
-        ad = ArchiverData(filename)
         samples = list(
             algorithms.remove_before_ts(ad.get_samples(), seconds, nano=nano)
         )
@@ -216,9 +207,8 @@ def test_remove_before_ts_decreasing():
                 assert actual_lowest_nanoseconds == seconds * 10**9
 
 
-def test_remove_after_ts():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_after_ts(ad):
     samples = list(algorithms.remove_after_ts(ad.get_samples(), 111, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != list(ad.get_samples())[:578]:
@@ -230,9 +220,8 @@ def test_remove_after_ts():
         )
 
 
-def test_remove_after_ts_greater_than_max():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_after_ts_greater_than_max(ad):
     samples = list(algorithms.remove_after_ts(ad.get_samples(), 200, nano=650000000))
     all_samples = list(ad.get_samples())
     if samples != all_samples:
@@ -246,9 +235,8 @@ def test_remove_after_ts_greater_than_max():
         )
 
 
-def test_remove_after_ts_at_max():
-    filename = Path("tests/test_data/RAW:2025_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_remove_after_ts_at_max(ad):
     samples = list(algorithms.remove_after_ts(ad.get_samples(), 193, nano=102601528))
     all_samples = list(ad.get_samples())
     if samples != all_samples:
@@ -262,9 +250,8 @@ def test_remove_after_ts_at_max():
         )
 
 
-def test_remove_after_ts_lesser_than_min():
-    filename = Path("tests/test_data/P:2021_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/P:2021_short.pb"])
+def test_remove_after_ts_lesser_than_min(ad):
     samples = list(
         algorithms.remove_after_ts(ad.get_samples(), 12743981, nano=650000000)
     )
@@ -278,9 +265,8 @@ def test_remove_after_ts_lesser_than_min():
         )
 
 
-def test_remove_after_ts_at_min():
-    filename = Path("tests/test_data/P:2021_short.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/P:2021_short.pb"])
+def test_remove_after_ts_at_min(ad):
     samples = list(
         algorithms.remove_after_ts(ad.get_samples(), 12743982, nano=176675494)
     )
@@ -300,9 +286,8 @@ def test_remove_after_ts_at_min():
         )
 
 
-def test_remove_after_ts_increasing():
-    filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_SHORT_test_data.pb"])
+def test_remove_after_ts_increasing(ad):
     for seconds, nano in zip(
         range(210, 420, 2), range(0, 20 * 10**9, 60000000), strict=False
     ):
@@ -320,9 +305,8 @@ def test_remove_after_ts_increasing():
                 assert actual_highest_nanoseconds == seconds * 10**9
 
 
-def test_remove_after_ts_decreasing():
-    filename = Path("tests/test_data/SCALAR_SHORT_test_data.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_SHORT_test_data.pb"])
+def test_remove_after_ts_decreasing(ad):
     for seconds, nano in zip(
         range(390, 180, -2), range(0, -(20 * 10**9), -60000000), strict=False
     ):

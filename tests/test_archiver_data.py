@@ -275,19 +275,17 @@ def test_generate_test_samples_all_types():
         assert adg.samples
 
 
-def test_get_samples():
-    filename = Path("tests/test_data/SCALAR_INT_test_data.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_INT_test_data.pb"])
+def test_get_samples(ad):
     for i, sample in enumerate(ad.get_samples()):
         assert sample.val == i
         assert sample.secondsintoyear == 1000 + 2 * i
 
 
-def test_get_samples_bytes():
-    filename = Path("tests/test_data/SCALAR_INT_test_data.pb")
-    ad = ArchiverData(filename)
+@pytest.mark.parametrize("filepath", ["tests/test_data/SCALAR_INT_test_data.pb"])
+def test_get_samples_bytes(ad):
     samples = list(ad.get_samples_bytes())
-    with open(filename, "rb") as f:
+    with open("tests/test_data/SCALAR_INT_test_data.pb", "rb") as f:
         expected_samples = list(f.readlines())[1:]
     assert len(samples) == len(expected_samples)
     for i in range(len(samples)):
@@ -341,27 +339,14 @@ def test_process_and_write():
     assert are_txt_identical is True
 
 
-def test_read_write_pb():
-    read = Path("tests/test_data/P:2021_short.pb")
+@pytest.mark.parametrize("filepath", ["tests/test_data/P:2021_short.pb"])
+def test_read_write_pb(ad):
     write = Path("tests/test_data/P:2021_short_write_result.pb")
-    ad = ArchiverData(read)
     ad.write_pb(write)
-    are_identical = filecmp.cmp(read, write, shallow=False)
+    are_identical = filecmp.cmp("tests/test_data/P:2021_short.pb", write, shallow=False)
     if are_identical is True:
         write.unlink()  # Delete results file if test passes
     assert are_identical is True
-
-
-# Takes too long but useful to test occasionally as it's unaltered real data.
-# def test_read_write_long():
-#     read = Path("tests/pb_data/P:2021.pb")
-#     write = Path("tests/pb_data/P:2021_write_result.pb")
-#     pb = ArchiverData(read)
-#     pb.write_pb(write)
-#     are_identical = filecmp.cmp(read, write, shallow=False)
-#     if are_identical is True:
-#         write.unlink()  # Delete results file if test passes
-#     assert are_identical is True
 
 
 def test_read_write_pb_all_types():
