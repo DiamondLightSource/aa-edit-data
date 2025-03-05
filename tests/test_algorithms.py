@@ -349,7 +349,7 @@ def test_reduce_by_factor_n_is_1():
 def test_reduce_by_factor_n_is_0():
     samples = iter(range(100))
     n = 0
-    with pytest.raises(ZeroDivisionError):
+    with pytest.raises(ValueError):
         list(algorithms.reduce_by_factor(samples, n))
 
 

@@ -18,7 +18,7 @@ def apply_min_period(samples: Iterator, period: float) -> Iterator:
     """
     seconds_delta = period
     nano_delta = (seconds_delta * 10**9) // 1
-    if not nano_delta >= 1:
+    if nano_delta < 1:
         raise ValueError(f"Period ({period}) must be at least 1 nanosecond.")
 
     if seconds_delta >= 5:  # Save time for long periods by ignoring nano
@@ -47,7 +47,7 @@ def reduce_by_factor(samples: Iterator, factor: int) -> Iterator:
     Returns:
         Iterator: Iterator of reduced list of samples.
     """
-    if factor < 0:
+    if factor <= 0:
         raise ValueError(f"Factor ({factor}) should be > 0.")
     return (sample for i, sample in enumerate(samples) if i % factor == 0)
 
@@ -106,7 +106,7 @@ def get_nano_diff(sample1: Any, sample2: Any) -> int:
     diff = (sample2.secondsintoyear - sample1.secondsintoyear) * 10**9 + (
         sample2.nano - sample1.nano
     )
-    if not diff > 0:
+    if diff <= 0:
         raise ValueError(
             f"diff ({diff}) is non-positive - ensure sample2 comes after sample1."
         )
@@ -124,7 +124,7 @@ def get_seconds_diff(sample1: Any, sample2: Any) -> int:
         int: Difference in seconds
     """
     diff = sample2.secondsintoyear - sample1.secondsintoyear
-    if not diff >= 0:
+    if diff < 0:
         raise ValueError(
             f"diff ({diff}) is negative - ensure sample2 comes after sample1."
         )
