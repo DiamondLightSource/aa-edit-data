@@ -15,7 +15,7 @@ description = "A tool to remove some data from the Epics Archiver Appliance"
 dependencies = [
     "protobuf",
     "typer",
-    "tqdm"
+    "tqdm",
 ] # Add project dependencies here, e.g. ["click", "numpy"]
 dynamic = ["version"]
 license.file = "LICENSE"
@@ -34,7 +34,7 @@ dev = [
     "pytest-cov",
     "ruff",
     "tox-direct",
-    "types-mock"
+    "types-mock",
 ]
 
 [project.scripts]
