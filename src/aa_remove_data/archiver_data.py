@@ -5,11 +5,34 @@ from datetime import datetime, timedelta
 from itertools import islice
 from os import PathLike
 from pathlib import Path
-from typing import Any
+from typing import TypeVar
 
 from tqdm import tqdm
 
 from aa_remove_data.generated import EPICSEvent_pb2
+
+Header = EPICSEvent_pb2.PayloadInfo
+Scalar = (
+    EPICSEvent_pb2.ScalarByte
+    | EPICSEvent_pb2.ScalarDouble
+    | EPICSEvent_pb2.ScalarEnum
+    | EPICSEvent_pb2.ScalarFloat
+    | EPICSEvent_pb2.ScalarInt
+    | EPICSEvent_pb2.ScalarShort
+    | EPICSEvent_pb2.ScalarString
+    | EPICSEvent_pb2.V4GenericBytes
+    | EPICSEvent_pb2.VectorChar  # Has no .extend() method (weird).
+)
+Vector = (
+    EPICSEvent_pb2.VectorDouble
+    | EPICSEvent_pb2.VectorEnum
+    | EPICSEvent_pb2.VectorFloat
+    | EPICSEvent_pb2.VectorInt
+    | EPICSEvent_pb2.VectorShort
+    | EPICSEvent_pb2.VectorString
+)
+Sample = Scalar | Vector
+EpicsMessage = TypeVar("EpicsMessage", bound=Sample | Header)
 
 
 class ArchiverData:
@@ -25,11 +48,11 @@ class ArchiverData:
         """
         self.filepath = Path(filepath)
         with open(filepath, "rb") as f:
-            self.header = self.deserialize(f.readline(), EPICSEvent_pb2.PayloadInfo)  # type: ignore
+            self.header = self.deserialize(f.readline(), Header)
         self.pv_type = self._get_pv_type()
         self.proto_class = self._get_proto_class()
 
-    def get_samples(self) -> Generator:
+    def get_samples(self) -> Generator[Sample]:
         """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
@@ -41,7 +64,7 @@ class ArchiverData:
             for line in islice(f, 1, None):
                 yield self.deserialize(line, self.proto_class)
 
-    def get_samples_bytes(self) -> Generator:
+    def get_samples_bytes(self) -> Generator[bytes]:
         """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
@@ -152,11 +175,11 @@ class ArchiverData:
                 writer.writerow(self.format_csv_row(sample, self.header.year))
 
     @staticmethod
-    def serialize(sample: Any) -> bytes:
+    def serialize(sample: Sample | Header) -> bytes:
         return ArchiverData._replace_newline_chars(sample.SerializeToString()) + b"\n"
 
     @staticmethod
-    def deserialize(line: bytes, proto_class: Callable) -> Any:
+    def deserialize(line: bytes, proto_class: type[EpicsMessage]) -> EpicsMessage:
         sample_bytes = ArchiverData._restore_newline_chars(line.rstrip(b"\n"))
         sample = proto_class()
         sample.ParseFromString(sample_bytes)
@@ -210,7 +233,7 @@ class ArchiverData:
         return ts
 
     @staticmethod
-    def format_datastr(sample: Any, year: int) -> str:
+    def format_datastr(sample: Sample, year: int) -> str:
         """Get a string containing information about a sample.
         Args:
             sample (type): A sample from a PB file.
@@ -224,7 +247,7 @@ class ArchiverData:
         )
 
     @staticmethod
-    def format_csv_row(sample: Any, year: int) -> list:
+    def format_csv_row(sample: Sample, year: int) -> list:
         date = ArchiverData.convert_to_datetime(year, sample.secondsintoyear)
         return [date, sample.val]
 
@@ -239,7 +262,7 @@ class ArchiverData:
         enum_descriptor = type_descriptor.enum_type
         return enum_descriptor.values_by_number[self.header.type].name
 
-    def _get_proto_class(self) -> Callable:
+    def _get_proto_class(self) -> type[Sample]:
         """Get the EPICSEvent_pb2 class corresponding to the pv in a PB file.
         Instances of this class can interpret PB messages of a matching type.
 

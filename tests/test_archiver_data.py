@@ -143,9 +143,9 @@ def test_assign_invalid_pv_type_num():
     ad = ArchiverDataDummy()
     # Only types 0-14 (inclusive) are valid
     with pytest.raises(ValueError):
-        ad.header.type = 15
+        ad.header.type = 15  # type: ignore
     with pytest.raises(ValueError):
-        ad.header.type = -1
+        ad.header.type = -1  # type: ignore
 
 
 def test_get_pv_type():
@@ -168,7 +168,7 @@ def test_get_pv_type():
     }
     ad = ArchiverDataGenerated()
     for expected_pv_type, num in pv_type_enum.items():
-        ad.header.type = num
+        ad.header.type = num  # type: ignore
         result = ad._get_pv_type()
         assert result == expected_pv_type
 
@@ -200,26 +200,26 @@ def test_get_proto_class_name():
 
 def test_get_proto_class():
     pv_type_num_to_proto_class = {
-        0: EPICSEvent_pb2.ScalarString,  # type: ignore
-        1: EPICSEvent_pb2.ScalarShort,  # type: ignore
-        2: EPICSEvent_pb2.ScalarFloat,  # type: ignore
-        3: EPICSEvent_pb2.ScalarEnum,  # type: ignore
-        4: EPICSEvent_pb2.ScalarByte,  # type: ignore
-        5: EPICSEvent_pb2.ScalarInt,  # type: ignore
-        6: EPICSEvent_pb2.ScalarDouble,  # type: ignore
-        7: EPICSEvent_pb2.VectorString,  # type: ignore
-        8: EPICSEvent_pb2.VectorShort,  # type: ignore
-        9: EPICSEvent_pb2.VectorFloat,  # type: ignore
-        10: EPICSEvent_pb2.VectorEnum,  # type: ignore
-        # 11: EPICSEvent_pb2.VectorByte,  THIS CLASS DOESN'T EXIST!
-        # Need to investigate - it's in DBR2PBTypeMapping but not EPICSEvent.proto
-        12: EPICSEvent_pb2.VectorInt,  # type: ignore
-        13: EPICSEvent_pb2.VectorDouble,  # type: ignore
-        14: EPICSEvent_pb2.V4GenericBytes,  # type: ignore
+        0: EPICSEvent_pb2.ScalarString,
+        1: EPICSEvent_pb2.ScalarShort,
+        2: EPICSEvent_pb2.ScalarFloat,
+        3: EPICSEvent_pb2.ScalarEnum,
+        4: EPICSEvent_pb2.ScalarByte,
+        5: EPICSEvent_pb2.ScalarInt,
+        6: EPICSEvent_pb2.ScalarDouble,
+        7: EPICSEvent_pb2.VectorString,
+        8: EPICSEvent_pb2.VectorShort,
+        9: EPICSEvent_pb2.VectorFloat,
+        10: EPICSEvent_pb2.VectorEnum,
+        # 11: EPICSEvent_pb2.VectorByte,  THIS CLASS DOESN'T EXIST
+        # It's in DBR2PBTypeMapping but not EPICSEvent.proto.
+        12: EPICSEvent_pb2.VectorInt,
+        13: EPICSEvent_pb2.VectorDouble,
+        14: EPICSEvent_pb2.V4GenericBytes,
     }
     for pv_type_num, expected_class in pv_type_num_to_proto_class.items():
         ad = ArchiverDataDummy()
-        ad.header.type = pv_type_num
+        ad.header.type = pv_type_num  # type: ignore
         ad.pv_type = ad._get_pv_type()
         result = ad._get_proto_class()
         assert result == expected_class

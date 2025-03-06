@@ -1,6 +1,7 @@
+from collections.abc import Generator
 from pathlib import Path
 
-from aa_remove_data.archiver_data import ArchiverData
+from aa_remove_data.archiver_data import ArchiverData, Header, Sample, Scalar, Vector
 from aa_remove_data.generated import EPICSEvent_pb2
 
 
@@ -14,10 +15,10 @@ class ArchiverDataGenerated(ArchiverData):
         seconds_gap: int = 1,
         nano_gap: int = 0,
     ):
-        self.header = EPICSEvent_pb2.PayloadInfo()  # type: ignore
+        self.header = Header()
         self.header.pvname = "generated_test_data"
         self.header.year = year
-        self.header.type = pv_type
+        self.header.type = pv_type  # type: ignore
         self.pv_type = self._get_pv_type()
         self.proto_class = self._get_proto_class()
         self.samples = samples
@@ -26,7 +27,7 @@ class ArchiverDataGenerated(ArchiverData):
         self.nano_gap = nano_gap
         self.filepath = Path("dummy")
 
-    def get_samples(self):
+    def get_samples(self) -> Generator[Sample]:
         """Read a PB file that is structured in the Archiver Appliance format.
         Gathers the header and samples from this file and assigns them to
         self.header self.samples.
@@ -40,20 +41,20 @@ class ArchiverDataGenerated(ArchiverData):
             sample = self.proto_class()
             sample.secondsintoyear = time // 10**9
             sample.nano = time % 10**9
-            if self.pv_type.startswith("WAVEFORM"):
-                sample.val.extend(
-                    [self.generate_test_value(i * 5 + j) for j in range(5)]
-                )
+            if isinstance(sample, Scalar):
+                sample = self.assign_sample_value(sample, i)
             else:
-                sample.val = self.generate_test_value(i)
+                sample = self.assign_sample_value(
+                    sample, [(i * 5 + j) for j in range(5)]
+                )
             time += time_gap
             yield sample
 
-    def get_samples_bytes(self):
+    def get_samples_bytes(self) -> Generator[bytes]:
         for sample in self.get_samples():
             yield self.serialize(sample)
 
-    def generate_test_value(self, val: int) -> str | bytes | int:
+    def assign_sample_value(self, sample: Sample, val: int | list[int]) -> Sample:
         """Generate an appropriate value for a sample based on it's pv type.
 
         Args:
@@ -62,9 +63,23 @@ class ArchiverDataGenerated(ArchiverData):
         Returns:
             str | bytes | int: The value converted to an oppropriate type.
         """
-        if self.pv_type.endswith("STRING"):
-            return str(val)
-        elif self.pv_type.endswith("BYTE") or self.pv_type.endswith("BYTES"):
-            return val.to_bytes(2, byteorder="big")
-        else:
-            return val
+        if isinstance(sample, Scalar):
+            assert isinstance(val, int)
+            if isinstance(sample, EPICSEvent_pb2.ScalarString):
+                sample.val = str(val)
+            elif isinstance(
+                sample,
+                EPICSEvent_pb2.ScalarByte
+                | EPICSEvent_pb2.V4GenericBytes
+                | EPICSEvent_pb2.VectorChar,
+            ):
+                sample.val = val.to_bytes(2, byteorder="big")
+            else:
+                sample.val = val
+        elif isinstance(sample, Vector):
+            assert isinstance(val, list)
+            if isinstance(sample, EPICSEvent_pb2.VectorString):
+                sample.val.extend([str(i) for i in val])
+            else:
+                sample.val.extend(val)
+        return sample
