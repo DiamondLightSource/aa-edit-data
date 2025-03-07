@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-import aa_remove_data.algorithms as algorithms
-from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
+import aa_edit_data.algorithms as algorithms
+from aa_edit_data.archiver_data_generated import ArchiverDataGenerated
 
 
 def test_get_nano_diff():

@@ -6,9 +6,9 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from aa_remove_data import __version__
-from aa_remove_data.archiver_data import ArchiverData
-from aa_remove_data.remove_data import app
+from aa_edit_data import __version__
+from aa_edit_data.archiver_data import ArchiverData
+from aa_edit_data.edit_data import app
 
 TEST_DATA = Path("tests/test_data")
 CLI_OUTPUT = Path("tests/test_data/cli_expected_output")
@@ -18,7 +18,7 @@ runner = CliRunner()
 
 
 def test_cli_version():
-    cmd = [sys.executable, "-m", "aa_remove_data", "--version"]
+    cmd = [sys.executable, "-m", "aa_edit_data", "--version"]
     assert subprocess.check_output(cmd).decode().strip() == __version__
 
 

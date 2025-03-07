@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from aa_remove_data.archiver_data import ArchiverData
+from aa_edit_data.archiver_data import ArchiverData
 
 
 def get_args():

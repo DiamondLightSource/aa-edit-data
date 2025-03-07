@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from aa_remove_data.archiver_data import ArchiverData
-from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
-from aa_remove_data.generated import EPICSEvent_pb2
+from aa_edit_data.archiver_data import ArchiverData
+from aa_edit_data.archiver_data_generated import ArchiverDataGenerated
+from aa_edit_data.generated import EPICSEvent_pb2
 
 
 class ArchiverDataDummy(ArchiverData):

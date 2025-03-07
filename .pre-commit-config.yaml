@@ -23,4 +23,4 @@ repos:
         types: [python]
         require_serial: true
 
-exclude: "^src/aa_remove_data/generated/"
+exclude: "^src/aa_edit_data/generated/"

@@ -26,5 +26,5 @@ COPY --from=build /venv/ /venv/
 ENV PATH=/venv/bin:$PATH
 
 # change this entrypoint if it is not the same as the repo
-ENTRYPOINT ["aa-remove-data"]
+ENTRYPOINT ["aa-edit-data"]
 CMD ["--version"]
