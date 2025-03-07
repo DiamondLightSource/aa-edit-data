@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-import aa_remove_data.algorithms as algorithms
-from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
+import aa_edit_data.algorithms as algorithms
+from aa_edit_data.archiver_data_generated import ArchiverDataGenerated
 
 
 def test_get_nano_diff():
@@ -343,44 +343,44 @@ def test_remove_after_ts_decreasing(ad):
                 assert actual_highest_nanoseconds == seconds * 10**9
 
 
-def test_reduce_by_factor():
+def test_remove_by_factor():
     samples = range(100)
     for n in range(1, 51):
         expected = list(range(0, 100, n))
-        actual = list(algorithms.reduce_by_factor(iter(samples), n))
+        actual = list(algorithms.remove_by_factor(iter(samples), n))
         assert actual == expected
 
 
-def test_reduce_by_factor_n_too_big():
+def test_remove_by_factor_n_too_big():
     samples = range(100)
     n = 2000
-    actual = list(algorithms.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.remove_by_factor(iter(samples), n))
     assert actual == [list(samples)[0]]
 
 
-def test_reduce_by_factor_n_is_1():
+def test_remove_by_factor_n_is_1():
     samples = range(100)
     n = 1
-    actual = list(algorithms.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.remove_by_factor(iter(samples), n))
     assert actual == list(samples)
 
 
-def test_reduce_by_factor_n_is_0():
+def test_remove_by_factor_n_is_0():
     samples = iter(range(100))
     n = 0
     with pytest.raises(ValueError):
-        list(algorithms.reduce_by_factor(samples, n))
+        list(algorithms.remove_by_factor(samples, n))
 
 
-def test_reduce_by_factor_n_is_neg():
+def test_remove_by_factor_n_is_neg():
     samples = range(100)
     n = -5
     with pytest.raises(ValueError):
-        list(algorithms.reduce_by_factor(iter(samples), n))
+        list(algorithms.remove_by_factor(iter(samples), n))
 
 
-def test_reduce_by_factor_n_is_len():
+def test_remove_by_factor_n_is_len():
     samples = range(100)
     n = len(list(samples))
-    actual = list(algorithms.reduce_by_factor(iter(samples), n))
+    actual = list(algorithms.remove_by_factor(iter(samples), n))
     assert actual == [list(samples)[0]]

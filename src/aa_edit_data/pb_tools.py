@@ -3,9 +3,9 @@ from pathlib import Path
 
 import typer
 
-from aa_remove_data._version import __version__
-from aa_remove_data.archiver_data import ArchiverData
-from aa_remove_data.remove_data import validate_pb_file
+from aa_edit_data._version import __version__
+from aa_edit_data.archiver_data import ArchiverData
+from aa_edit_data.edit_data import validate_pb_file
 
 app = typer.Typer()
 

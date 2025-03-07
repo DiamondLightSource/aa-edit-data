@@ -9,7 +9,7 @@ from typing import TypeVar
 
 from tqdm import tqdm
 
-from aa_remove_data.generated import EPICSEvent_pb2
+from aa_edit_data.generated import EPICSEvent_pb2
 
 Header = EPICSEvent_pb2.PayloadInfo
 Scalar = (

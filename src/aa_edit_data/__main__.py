@@ -1,4 +1,4 @@
-"""Interface for ``python -m aa_remove_data``."""
+"""Interface for ``python -m aa_edit_data``."""
 
 from argparse import ArgumentParser
 from collections.abc import Sequence

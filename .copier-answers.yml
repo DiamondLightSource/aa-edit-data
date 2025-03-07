@@ -7,12 +7,12 @@ component_lifecycle: experimental
 component_owner: group:default/accelerator-controls
 component_type: service
 description: A tool to remove some data from the Epics Archiver Appliance
-distribution_name: aa-remove-data
+distribution_name: aa-edit-data
 docker: true
 docs_type: README
 git_platform: github.com
 github_org: DiamondLightSource
-package_name: aa_remove_data
+package_name: aa_edit_data
 pypi: false
-repo_name: aa-remove-data
+repo_name: aa-edit-data
 type_checker: pyright

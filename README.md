@@ -1,9 +1,9 @@
-[![CI](https://github.com/DiamondLightSource/aa-remove-data/actions/workflows/ci.yml/badge.svg)](https://github.com/DiamondLightSource/aa-remove-data/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/DiamondLightSource/aa-remove-data/branch/main/graph/badge.svg)](https://codecov.io/gh/DiamondLightSource/aa-remove-data)
+[![CI](https://github.com/DiamondLightSource/aa-edit-data/actions/workflows/ci.yml/badge.svg)](https://github.com/DiamondLightSource/aa-edit-data/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/DiamondLightSource/aa-edit-data/branch/main/graph/badge.svg)](https://codecov.io/gh/DiamondLightSource/aa-edit-data)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
-# aa_remove_data
+# aa_edit_data
 
 This repository contains tools that can be used to learn about, and reduce the size of, PV data 
 contained in the Epics Archiver Appliance. There are a series of commands which apply 
@@ -13,12 +13,12 @@ This is a serialised data format - to access the data, which is necessary for so
 the data must first be deserialised. The ArchiverData class handles the reading, writing, 
 serialising and deserialising of PB data.
 
-The tools are split up into two apps, **pb-tools** and **aa-remove-data**.
+The tools are split up into two apps, **pb-tools** and **aa-edit-data**.
 
-Source          | <https://github.com/DiamondLightSource/aa-remove-data>
+Source          | <https://github.com/DiamondLightSource/aa-edit-data>
 :---:           | :---:
-Docker          | `docker run ghcr.io/diamondlightsource/aa-remove-data:latest`
-Releases        | <https://github.com/DiamondLightSource/aa-remove-data/releases>
+Docker          | `docker run ghcr.io/diamondlightsource/aa-edit-data:latest`
+Releases        | <https://github.com/DiamondLightSource/aa-edit-data/releases>
 
 pb-tools
 --------
@@ -43,34 +43,34 @@ DATE                   SECONDS     NANO         VAL
 pb-tools pb-2-txt pb_data/RAW:2025.pb
 ```
 
-aa-remove-data
+aa-edit-data
 --------------
 
 - **to-period** *filename* *period* *\[options]*
 
 *Reduce the frequency of data in a PB file by setting a minimum period between data points.*
 ```
-aa-remove-data to-period pb_data/RAW:2025.pb 10
+aa-edit-data to-period pb_data/RAW:2025.pb 10
 ```
 - **by-factor** *filename* *factor* *\[options]*
 
 *Reduce the number of data points in a PB file by a certain factor.*
 ```
-aa-remove-data by-factor pb_data/RAW:2025.pb 3
+aa-edit-data by-factor pb_data/RAW:2025.pb 3
 ```
 
 - **remove-before** *filename* *timestamp* *\[options]*
 
 *Remove all data points in a PB file before a certain timestamp.*
 ```
-aa-remove-data remove-before pb_data/RAW:2025.pb 1,2,3,4
+aa-edit-data remove-before pb_data/RAW:2025.pb 1,2,3,4
 ```
 
 - **remove-after** *filename* *timestamp* *\[options]*
 
 *Remove all data points in a PB file after a certain timestamp.*
 ```
-aa-remove-data remove-before pb_data/RAW:2025.pb 1,2,3,4
+aa-edit-data remove-before pb_data/RAW:2025.pb 1,2,3,4
 ```
 
 

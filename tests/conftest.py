@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from aa_remove_data.archiver_data import ArchiverData
+from aa_edit_data.archiver_data import ArchiverData
 
 # Prevent pytest from catching exceptions when debugging in vscode so that break on
 # exception works correctly (see: https://github.com/pytest-dev/pytest/issues/7409)

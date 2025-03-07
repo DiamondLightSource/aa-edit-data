@@ -3,7 +3,7 @@ requires = ["setuptools>=64", "setuptools_scm[toml]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aa-remove-data"
+name = "aa-edit-data"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: Apache Software License",
@@ -11,7 +11,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-description = "A tool to remove some data from the Epics Archiver Appliance"
+description = "A tool to edit some data from the Epics Archiver Appliance"
 dependencies = [
     "protobuf",
     "typer",
@@ -38,11 +38,11 @@ dev = [
 ]
 
 [project.scripts]
-aa-remove-data = "aa_remove_data.remove_data:app"
-pb-tools = "aa_remove_data.pb_tools:app"
+aa-edit-data = "aa_edit_data.edit_data:app"
+pb-tools = "aa_edit_data.pb_tools:app"
 
 [project.urls]
-GitHub = "https://github.com/DiamondLightSource/aa-remove-data"
+GitHub = "https://github.com/DiamondLightSource/aa-edit-data"
 
 [[project.authors]] # Further authors may be added by duplicating this section
 email = "jacob.williamson@diamond.ac.uk"
@@ -50,12 +50,12 @@ name = "Jacob Williamson"
 
 
 [tool.setuptools_scm]
-version_file = "src/aa_remove_data/_version.py"
+version_file = "src/aa_edit_data/_version.py"
 
 [tool.pyright]
 typeCheckingMode = "standard"
-reportMissingImports = false                # Ignore missing stubs in imported modules
-exclude = ["src/aa_remove_data/generated/"]
+reportMissingImports = false              # Ignore missing stubs in imported modules
+exclude = ["src/aa_edit_data/generated/"]
 
 [tool.pytest.ini_options]
 # Run pytest with all our checkers, and don't spam us with massive tracebacks on error
@@ -68,7 +68,7 @@ filterwarnings = "error"
 testpaths = "docs src tests"
 
 [tool.coverage.run]
-data_file = "/tmp/aa_remove_data.coverage"
+data_file = "/tmp/aa_edit_data.coverage"
 
 [tool.coverage.paths]
 # Tests are run from installed location, map back to the src directory
@@ -92,7 +92,7 @@ allowlist_externals =
 commands =
     pre-commit: pre-commit run --all-files --show-diff-on-failure {posargs}
     type-checking: pyright src tests {posargs}
-    tests: pytest --cov=aa_remove_data --cov-report term --cov-report xml:cov.xml {posargs}
+    tests: pytest --cov=aa_edit_data --cov-report term --cov-report xml:cov.xml {posargs}
 """
 
 [tool.ruff]

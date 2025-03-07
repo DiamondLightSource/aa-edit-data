@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from pathlib import Path
 
-from aa_remove_data.archiver_data import ArchiverData, Header, Sample, Scalar, Vector
-from aa_remove_data.generated import EPICSEvent_pb2
+from aa_edit_data.archiver_data import ArchiverData, Header, Sample, Scalar, Vector
+from aa_edit_data.generated import EPICSEvent_pb2
 
 
 class ArchiverDataGenerated(ArchiverData):

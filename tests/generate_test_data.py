@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from aa_remove_data.archiver_data_generated import ArchiverDataGenerated
+from aa_edit_data.archiver_data_generated import ArchiverDataGenerated
 
 
 def generate_test_data():
