@@ -34,7 +34,7 @@ def test_cli_reduce_to_period():
     expected = CLI_OUTPUT / "SCALAR_STRING_reduce_to_period.pb"
     period = "4.5"
     cmd = [
-        "to-period",
+        "reduce-to-period",
         str(read),
         period,
         f"--new-filename={write}",
@@ -51,7 +51,7 @@ def test_cli_reduce_to_period_invalid_period():
     write = RESULTS / "SCALAR_STRING_reduce_to_period_invalid_period.pb"
     period = "0"
     cmd = [
-        "to-period",
+        "reduce-to-period",
         str(read),
         period,
         f"--new-filename={write}",
@@ -67,7 +67,7 @@ def test_cli_reduce_to_period_check_period():
     write = RESULTS / "RAW:2025_test_reduce_to_period.pb"
     period = 3
     cmd = [
-        "to-period",
+        "reduce-to-period",
         str(read),
         str(period),
         f"--new-filename={write}",
@@ -90,7 +90,7 @@ def test_cli_reduce_to_period_backup():
     expected = read
     period = "3"
     cmd = [
-        "to-period",
+        "reduce-to-period",
         str(read),
         period,
         f"--new-filename={write}",
@@ -111,7 +111,7 @@ def test_cli_reduce_to_period_txt():
     txt_path = write.with_suffix(".txt")
     period = "4.5"
     cmd = [
-        "to-period",
+        "reduce-to-period",
         str(read),
         period,
         "-t",
@@ -128,7 +128,7 @@ def test_cli_reduce_to_period_txt():
 def test_cli_reduce_to_period_non_existent_filename():
     read = TEST_DATA / "this/file/does_not_exist.pb"
     period = "10"
-    cmd = ["to-period", str(read), period]
+    cmd = ["reduce-to-period", str(read), period]
     result = runner.invoke(app, cmd)
     print(result.stdout)
     assert result.exit_code != 0
@@ -138,7 +138,7 @@ def test_cli_reduce_to_period_non_existent_filename():
 def test_cli_reduce_to_period_invalid_filename():
     read = TEST_DATA / "SCALAR_STRING_test_data.jpeg"
     period = "10"
-    cmd = ["to-period", str(read), period]
+    cmd = ["reduce-to-period", str(read), period]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -149,7 +149,7 @@ def test_cli_remove_reduce_to_period_invalid_new_filename():
     read = TEST_DATA / "dummy_file.pb"
     write = RESULTS / "SCALAR_STRING_reduce_to_period.hdf5"
     period = "10"
-    cmd = ["to-period", str(read), period, f"--new-filename={write}"]
+    cmd = ["reduce-to-period", str(read), period, f"--new-filename={write}"]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -160,7 +160,7 @@ def test_cli_reduce_to_period_invalid_backup_filename():
     read = TEST_DATA / "dummy_file.pb"
     backup = RESULTS / "SCALAR_STRING_reduce_to_period_backup.zip"
     period = "10"
-    cmd = ["to-period", str(read), period, f"--backup-filename={backup}"]
+    cmd = ["reduce-to-period", str(read), period, f"--backup-filename={backup}"]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -173,7 +173,7 @@ def test_cli_reduce_by_factor():
     expected = CLI_OUTPUT / "SCALAR_STRING_reduce_by_factor.pb"
     factor = "3"
     cmd = [
-        "by-factor",
+        "reduce-by-factor",
         str(read),
         factor,
         f"--new-filename={write}",
@@ -192,7 +192,7 @@ def test_cli_reduce_by_factor_backup():
     expected = read
     factor = "3"
     cmd = [
-        "by-factor",
+        "reduce-by-factor",
         str(read),
         factor,
         f"--new-filename={write}",
@@ -214,7 +214,7 @@ def test_cli_reduce_by_factor_no_new_filename():
     factor = "3"
     subprocess.run(["cp", read, test_backup])
     cmd = [
-        "by-factor",
+        "reduce-by-factor",
         str(read),
         factor,
     ]
@@ -235,7 +235,7 @@ def test_cli_reduce_by_factor_txt():
     txt_path = write.with_suffix(".txt")
     factor = "3"
     cmd = [
-        "by-factor",
+        "reduce-by-factor",
         str(read),
         factor,
         "-t",
@@ -252,7 +252,7 @@ def test_cli_reduce_by_factor_txt():
 def test_cli_reduce_by_factor_non_existent_filename():
     read = TEST_DATA / "this/file/does_not_exist.pb"
     factor = "10"
-    cmd = ["by-factor", str(read), factor]
+    cmd = ["reduce-by-factor", str(read), factor]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -262,7 +262,7 @@ def test_cli_reduce_by_factor_non_existent_filename():
 def test_cli_reduce_by_factor_invalid_filename():
     read = TEST_DATA / "SCALAR_STRING_test_data.jpeg"
     factor = "5"
-    cmd = ["by-factor", str(read), factor]
+    cmd = ["reduce-by-factor", str(read), factor]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -273,7 +273,7 @@ def test_cli_remove_reduce_by_factor_invalid_new_filename():
     read = TEST_DATA / "dummy_file.pb"
     write = RESULTS / "SCALAR_STRING_reduce_by_factor.hdf5"
     factor = "5"
-    cmd = ["by-factor", str(read), factor, f"--new-filename={write}"]
+    cmd = ["reduce-by-factor", str(read), factor, f"--new-filename={write}"]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0
@@ -284,7 +284,7 @@ def test_cli_reduce_by_factor_invalid_backup_filename():
     read = TEST_DATA / "dummy_file.pb"
     backup = RESULTS / "SCALAR_STRING_reduce_by_factor_backup.zip"
     factor = "5"
-    cmd = ["by-factor", str(read), factor, f"--backup-filename={backup}"]
+    cmd = ["reduce-by-factor", str(read), factor, f"--backup-filename={backup}"]
     result = runner.invoke(app, cmd)
 
     assert result.exit_code != 0

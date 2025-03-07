@@ -11,7 +11,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-description = "A tool to remove some data from the Epics Archiver Appliance"
+description = "A tool to edit some data from the Epics Archiver Appliance"
 dependencies = [
     "protobuf",
     "typer",
@@ -38,7 +38,7 @@ dev = [
 ]
 
 [project.scripts]
-aa-edit-data = "aa_edit_data.remove_data:app"
+aa-edit-data = "aa_edit_data.edit_data:app"
 pb-tools = "aa_edit_data.pb_tools:app"
 
 [project.urls]

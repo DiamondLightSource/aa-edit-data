@@ -7,9 +7,9 @@ import typer
 from aa_edit_data._version import __version__
 from aa_edit_data.algorithms import (
     apply_min_period,
-    reduce_by_factor,
     remove_after_ts,
     remove_before_ts,
+    remove_by_factor,
 )
 from aa_edit_data.archiver_data import ArchiverData
 
@@ -40,7 +40,7 @@ def main(
 
 
 @app.command()
-def to_period(
+def reduce_to_period(
     filename: Path = FILENAME_ARGUMENT,
     period: float = typer.Argument(
         help="Minimum period between each data point", callback=validate_positive
@@ -60,7 +60,7 @@ def to_period(
 
 
 @app.command()
-def by_factor(
+def reduce_by_factor(
     filename: Path = FILENAME_ARGUMENT,
     factor: int = typer.Argument(help="Factor to reduce the data by", min=1),
     new_filename: Path | None = NEW_FILENAME_OPTION,
@@ -73,7 +73,7 @@ def by_factor(
         subprocess.run(["cp", f, backup_f], check=True)
 
     ad = ArchiverData(f)
-    ad.process_and_write(new_f, write_txt, reduce_by_factor, [factor], raw=True)
+    ad.process_and_write(new_f, write_txt, remove_by_factor, [factor], raw=True)
 
 
 @app.command()
