@@ -131,7 +131,7 @@ class ArchiverData:
             f_txt.write(f"{self.header.pvname}, {self.pv_type}, {self.header.year}\n")
             f_txt.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
             if raw:
-                for sample in tqdm(samples, mininterval=0.1):
+                for sample in tqdm(samples):
                     f_pb.write(sample)
                     f_txt.write(
                         self.format_datastr(
@@ -139,7 +139,7 @@ class ArchiverData:
                         )
                     )
             else:
-                for sample in tqdm(samples, mininterval=0.1):
+                for sample in tqdm(samples):
                     f_pb.write(self.serialize(sample))
                     f_txt.write(self.format_datastr(sample, year))
 
@@ -148,11 +148,9 @@ class ArchiverData:
         with open(filepath, "wb") as f:
             f.write(self.serialize(self.header))
             f.writelines(
-                tqdm(samples, mininterval=0.1)
+                tqdm(samples)
                 if raw
-                else (
-                    self.serialize(sample) for sample in tqdm(samples, mininterval=0.1)
-                )
+                else (self.serialize(sample) for sample in tqdm(samples))
             )
 
     def write_txt(self, filepath: PathLike, samples: Iterator | None = None):
@@ -164,7 +162,9 @@ class ArchiverData:
             f.write(f"DATE{' ' * 19}SECONDS{' ' * 5}NANO{' ' * 9}VAL\n")
             # Write samples
             f.writelines(
-                self.format_datastr(sample, self.header.year) for sample in samples
+                tqdm(
+                    self.format_datastr(sample, self.header.year) for sample in samples
+                )
             )
 
     def write_csv(self, filepath: PathLike, samples: Iterator | None = None):
