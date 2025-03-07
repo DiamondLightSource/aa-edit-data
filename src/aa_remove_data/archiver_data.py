@@ -21,7 +21,7 @@ Scalar = (
     | EPICSEvent_pb2.ScalarShort
     | EPICSEvent_pb2.ScalarString
     | EPICSEvent_pb2.V4GenericBytes
-    | EPICSEvent_pb2.VectorChar  # Has no .extend() method (weird).
+    # EPICSEvent_pb2.VectorChar is in EPICSEvent.proto but not DBR2PBTypeMapping.java.
 )
 Vector = (
     EPICSEvent_pb2.VectorDouble

@@ -68,10 +68,7 @@ class ArchiverDataGenerated(ArchiverData):
             if isinstance(sample, EPICSEvent_pb2.ScalarString):
                 sample.val = str(val)
             elif isinstance(
-                sample,
-                EPICSEvent_pb2.ScalarByte
-                | EPICSEvent_pb2.V4GenericBytes
-                | EPICSEvent_pb2.VectorChar,
+                sample, EPICSEvent_pb2.ScalarByte | EPICSEvent_pb2.V4GenericBytes
             ):
                 sample.val = val.to_bytes(2, byteorder="big")
             else:
