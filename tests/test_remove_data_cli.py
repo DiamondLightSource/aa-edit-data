@@ -22,6 +22,12 @@ def test_cli_version():
     assert subprocess.check_output(cmd).decode().strip() == __version__
 
 
+def test_cli_remove_data_version():
+    cmd = ["--version"]
+    result = runner.invoke(app, cmd)
+    assert result.stdout.strip() == f"Version: {__version__}"
+
+
 def test_cli_reduce_to_period():
     read = TEST_DATA / "SCALAR_STRING_test_data.pb"
     write = RESULTS / "SCALAR_STRING_reduce_to_period.pb"
@@ -33,11 +39,27 @@ def test_cli_reduce_to_period():
         period,
         f"--new-filename={write}",
     ]
-    result = result = runner.invoke(app, cmd)
+    result = runner.invoke(app, cmd)
     print(result.stdout)
     are_identical = filecmp.cmp(write, expected, shallow=False)
     assert are_identical
     write.unlink()
+
+
+def test_cli_reduce_to_period_invalid_period():
+    read = TEST_DATA / "SCALAR_STRING_test_data.pb"
+    write = RESULTS / "SCALAR_STRING_reduce_to_period_invalid_period.pb"
+    period = "0"
+    cmd = [
+        "to-period",
+        str(read),
+        period,
+        f"--new-filename={write}",
+    ]
+    result = runner.invoke(app, cmd)
+    assert result.exit_code != 0
+    assert "Invalid value for 'PERIOD'" in result.output
+    try_to_remove(write)
 
 
 def test_cli_reduce_to_period_check_period():
@@ -50,7 +72,7 @@ def test_cli_reduce_to_period_check_period():
         str(period),
         f"--new-filename={write}",
     ]
-    result = result = runner.invoke(app, cmd)
+    result = runner.invoke(app, cmd)
     print(result.stdout)
     ad = ArchiverData(write)
     samples = list(ad.get_samples())

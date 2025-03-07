@@ -65,6 +65,14 @@ def test_apply_min_period(ad):
 
 
 @pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
+def test_apply_min_period_large_period(ad):
+    samples = list(algorithms.apply_min_period(ad.get_samples(), period=8))
+    for i in range(len(samples) - 1):
+        diff = samples[i + 1].secondsintoyear - samples[i].secondsintoyear
+        assert diff >= 8
+
+
+@pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])
 def test_apply_min_period_tiny_period(ad):
     write_filepath = Path("tests/test_data/RAW:2025_short_test_apply_min_period.pb")
     samples = list(algorithms.apply_min_period(ad.get_samples(), period=0.01))
@@ -85,10 +93,21 @@ def test_apply_min_period_tiny_period(ad):
     write_filepath.unlink()  # Delete results file if test passes
 
 
+def test_apply_min_period_period_too_small():
+    with pytest.raises(ValueError):
+        list(algorithms.apply_min_period(iter([1, 2, 3]), 0))
+
+
 def test_apply_min_period_gives_neg_diff_error():
     adg = ArchiverDataGenerated(start=1000, seconds_gap=-1)
     with pytest.raises(ValueError):
         list(algorithms.apply_min_period(adg.get_samples(), period=1))
+
+
+def test_apply_min_period_gives_neg_diff_error_large_period():
+    adg = ArchiverDataGenerated(start=1000, seconds_gap=-1)
+    with pytest.raises(ValueError):
+        list(algorithms.apply_min_period(adg.get_samples(), period=9))
 
 
 @pytest.mark.parametrize("filepath", ["tests/test_data/RAW:2025_short.pb"])

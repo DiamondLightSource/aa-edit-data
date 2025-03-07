@@ -27,6 +27,12 @@ def test_cli_version():
     assert subprocess.check_output(cmd).decode().strip() == __version__
 
 
+def test_cli_pb_tools_version():
+    cmd = ["--version"]
+    result = runner.invoke(app, cmd)
+    assert result.stdout.strip() == f"Version: {__version__}"
+
+
 def test_cli_print_header():
     cmd = ["print-header", str(TEST_DATA / "P:2021_short.pb")]
     expected = "Name: BL13I-VA-GAUGE-28:P, Type: SCALAR_DOUBLE, Year: 2021\n"
@@ -56,6 +62,19 @@ def test_cli_pb_2_txt():
     print(result.stdout)
     are_identical = filecmp.cmp(write, expected, shallow=False)
     assert are_identical is True
+    if are_identical:
+        write = Path(write)
+        write.unlink()
+
+
+def test_cli_pb_2_csv():
+    read = TEST_DATA / "RAW:2025_short.pb"
+    write = RESULTS / "RAW:2025_short_test_cli_pb_2_csv.csv"
+    expected = TEST_DATA / "RAW:2025_short.csv"
+    cmd = ["pb-2-csv", str(read), str(write)]
+    result = runner.invoke(app, cmd)
+    print(result.stdout)
+    are_identical = filecmp.cmp(write, expected, shallow=False)
     if are_identical:
         write = Path(write)
         write.unlink()
