@@ -184,6 +184,28 @@ def test_cli_reduce_by_factor_backup():
     backup.unlink()
 
 
+def test_cli_reduce_by_factor_no_new_filename():
+    read = TEST_DATA / "SCALAR_STRING_test_data.pb"
+    backup = TEST_DATA / "SCALAR_STRING_test_data_backup.pb"
+    test_backup = TEST_DATA / "SCALAR_STRING_test_data_test_backup.pb"
+    expected = CLI_OUTPUT / "SCALAR_STRING_reduce_by_factor.pb"
+    factor = "3"
+    subprocess.run(["cp", read, test_backup])
+    cmd = [
+        "by-factor",
+        str(read),
+        factor,
+    ]
+    result = runner.invoke(app, cmd)
+    print(result.stdout)
+    are_identical = filecmp.cmp(read, expected, shallow=False)
+    subprocess.run(["mv", test_backup, read])
+    are_backup_identical = filecmp.cmp(backup, read, shallow=False)
+    subprocess.run(["rm", backup])
+    assert are_identical
+    assert are_backup_identical
+
+
 def test_cli_reduce_by_factor_txt():
     read = TEST_DATA / "SCALAR_STRING_test_data.pb"
     write = RESULTS / "SCALAR_STRING_reduce_by_factor_txt.pb"
