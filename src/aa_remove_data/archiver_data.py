@@ -171,7 +171,7 @@ class ArchiverData:
         samples = samples or self.get_samples()
         with open(filepath, "w") as f:
             writer = csv.writer(f)
-            for sample in samples:
+            for sample in tqdm(samples):
                 writer.writerow(self.format_csv_row(sample, self.header.year))
 
     @staticmethod
@@ -249,7 +249,7 @@ class ArchiverData:
     @staticmethod
     def format_csv_row(sample: Sample, year: int) -> list:
         date = ArchiverData.convert_to_datetime(year, sample.secondsintoyear)
-        return [date, sample.val]
+        return [date, sample.nano, sample.val]
 
     def _get_pv_type(self) -> str:
         """Get the name of a PB file's pv type using information in its
