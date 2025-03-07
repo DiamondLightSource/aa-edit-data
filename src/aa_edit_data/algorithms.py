@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from itertools import chain
-from typing import Any
+
+from aa_edit_data.archiver_data import Sample
 
 
 def apply_min_period(samples: Iterator, period: float) -> Iterator:
@@ -93,12 +94,25 @@ def remove_after_ts(samples: Iterator, seconds: int, nano: int = 0) -> Iterator:
             break
 
 
-def get_nano_diff(sample1: Any, sample2: Any) -> int:
+def remove_before_and_after(
+    samples: Iterator, before: tuple[int, int], after: tuple[int, int]
+) -> Iterator:
+    for sample_b in samples:
+        if not is_before(sample_b, before[0], before[1]):
+            for sample_a in chain([sample_b], samples):
+                if not is_after(sample_a, after[0], after[1]):
+                    yield sample_a
+                else:
+                    break
+            break
+
+
+def get_nano_diff(sample1: Sample, sample2: Sample) -> int:
     """Get the difference in nano seconds between two samples.
 
     Args:
-        sample1 (Any): An Archiver Appliance sample.
-        sample2 (Any): Another Archiver Appliance sample.
+        sample1 (Sample): An Archiver Appliance sample.
+        sample2 (Sample): Another Archiver Appliance sample.
 
     Returns:
         int: Difference in nanoseconds.
@@ -113,12 +127,12 @@ def get_nano_diff(sample1: Any, sample2: Any) -> int:
     return diff
 
 
-def get_seconds_diff(sample1: Any, sample2: Any) -> int:
+def get_seconds_diff(sample1: Sample, sample2: Sample) -> int:
     """Get the difference in whole seconds between two samples.
 
     Args:
-        sample1 (Any): An Archiver Appliance sample.
-        sample2 (Any): Another Archiver Appliance sample.
+        sample1 (Sample): An Archiver Appliance sample.
+        sample2 (Sample): Another Archiver Appliance sample.
 
     Returns:
         int: Difference in seconds
@@ -131,11 +145,11 @@ def get_seconds_diff(sample1: Any, sample2: Any) -> int:
     return diff
 
 
-def is_before(sample: Any, seconds: int, nano: int) -> bool:
+def is_before(sample: Sample, seconds: int, nano: int) -> bool:
     """Determine whether a sample's timestamp is before a given timestamp.
 
     Args:
-        sample (Any): Sample being looked at.
+        sample (Sample): Sample being looked at.
         seconds (int): Seconds of target timestamp.
         nano (int): Nanoseconds of a target timestamp.
 
@@ -150,11 +164,11 @@ def is_before(sample: Any, seconds: int, nano: int) -> bool:
         return False
 
 
-def is_after(sample: Any, seconds: int, nano: int) -> bool:
+def is_after(sample: Sample, seconds: int, nano: int) -> bool:
     """Determine whether a sample's timestamp is after a given timestamp.
 
     Args:
-        sample (Any): Sample being looked at.
+        sample (Sample): Sample being looked at.
         seconds (int): Seconds of target timestamp.
         nano (int): Nanoseconds of a target timestamp.
 

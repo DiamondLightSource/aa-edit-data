@@ -8,6 +8,7 @@ from aa_edit_data._version import __version__
 from aa_edit_data.algorithms import (
     apply_min_period,
     remove_after_ts,
+    remove_before_and_after,
     remove_before_ts,
     remove_by_factor,
 )
@@ -114,6 +115,42 @@ def remove_after(
     ad = ArchiverData(f)
     seconds, nano = process_timestamp(ad.header.year, timestamp)
     ad.process_and_write(new_f, write_txt, remove_after_ts, [seconds, nano])
+
+
+@app.command()
+def remove_before_after(
+    filename: Path = FILENAME_ARGUMENT,
+    timestamp_before: str = typer.Argument(
+        help="{month,day,hour,minute,second,nanosecond} before which samples will be "
+        + "deleted. Month is required"
+    ),
+    timestamp_after: str = typer.Argument(
+        help="{month,day,hour,minute,second,nanosecond} after which samples will be "
+        + "deleted. Month is required"
+    ),
+    new_filename: Path | None = NEW_FILENAME_OPTION,
+    backup_filename: Path | None = BACKUP_FILENAME_OPTION,
+    write_txt: bool = WRITE_TXT_OPTION,
+):
+    f, new_f, backup_f = process_filenames(filename, new_filename, backup_filename)
+    if backup_f is not None:
+        subprocess.run(["cp", f, backup_f], check=True)
+
+    ad = ArchiverData(f)
+    ts_before = process_timestamp(ad.header.year, timestamp_before)
+    ts_after = process_timestamp(ad.header.year, timestamp_after)
+    if (
+        ts_before[0] > ts_after[0]
+        or ts_before[0] == ts_after[0]
+        and ts_before[1] >= ts_after[1]
+    ):
+        raise ValueError(
+            "Give timestamps chronilogically - "
+            + "timestamp_before must be before timestamp_after."
+        )
+    ad.process_and_write(
+        new_f, write_txt, remove_before_and_after, [ts_before, ts_after]
+    )
 
 
 def validate_pb_file(filepath: Path, should_exist: bool = False):
