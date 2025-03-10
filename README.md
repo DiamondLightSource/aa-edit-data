@@ -46,13 +46,13 @@ pb-tools pb-2-txt pb_data/RAW:2025.pb
 aa-edit-data
 --------------
 
-- **to-period** *filename* *period* *\[options]*
+- **reduce-to-period** *filename* *period* *\[options]*
 
 *Reduce the frequency of data in a PB file by setting a minimum period between data points.*
 ```
 aa-edit-data to-period pb_data/RAW:2025.pb 10
 ```
-- **by-factor** *filename* *factor* *\[options]*
+- **reduce-by-factor** *filename* *factor* *\[options]*
 
 *Reduce the number of data points in a PB file by a certain factor.*
 ```
